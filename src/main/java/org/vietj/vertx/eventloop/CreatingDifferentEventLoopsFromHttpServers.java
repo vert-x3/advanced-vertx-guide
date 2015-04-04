@@ -1,6 +1,8 @@
 package org.vietj.vertx.eventloop;
 
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServerRequest;
 import io.vertx.docgen.Source;
 
 /**
@@ -9,17 +11,17 @@ import io.vertx.docgen.Source;
 @Source
 public class CreatingDifferentEventLoopsFromHttpServers {
 
-  private static int numberOfServerStarted;
+  private static Handler<HttpServerRequest> requestHandler = req -> {};
 
   public static void main(String[] args) {
     Vertx vertx = Vertx.vertx();
-    vertx.createHttpServer().listen(result -> {
-        // This executes in a context
-        numberOfServerStarted++;
+    vertx.createHttpServer().requestHandler(requestHandler).listen(result -> {
+      // This executes in a context
+      System.out.println("Current thread is " + Thread.currentThread());
       });
-    vertx.createHttpServer().listen(result -> {
-        // This executes in a different context
-        numberOfServerStarted++;
+    vertx.createHttpServer().requestHandler(requestHandler).listen(result -> {
+      // This executes in a different context
+      System.out.println("Current thread is " + Thread.currentThread());
       });
 
   }
