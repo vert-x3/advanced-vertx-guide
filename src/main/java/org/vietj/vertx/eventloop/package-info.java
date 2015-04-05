@@ -184,6 +184,73 @@
  * The only eligible way to communicate with other Vert.x component is via the event bus, a worker is allowed
  * to send a message or reply to an incoming message.
  *
+ * A common pattern is to deploy worker verticles and send them a message and then the worker replies to this message:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.WorkerReplying#main}
+ * ----
+ *
+ * This prints:
+ *
+ * ----
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * ----
+ *
+ * The same worker verticle class can be deployed several times by specyfying the number of instances. This allows
+ * to concurrently process blocking tasks:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.WorkerInstancesReplying#main}
+ * ----
+ *
+ * Each Verticle will always use the same thread:
+ *
+ * ----
+ * Executed by worker 1 with Thread[vert.x-worker-thread-4,5,main]
+ * Executed by worker 2 with Thread[vert.x-worker-thread-5,5,main]
+ * Executed by worker 3 with Thread[vert.x-worker-thread-3,5,main]
+ * Executed by worker 1 with Thread[vert.x-worker-thread-4,5,main]
+ * Executed by worker 3 with Thread[vert.x-worker-thread-3,5,main]
+ * Executed by worker 2 with Thread[vert.x-worker-thread-5,5,main]
+ * Executed by worker 2 with Thread[vert.x-worker-thread-5,5,main]
+ * Executed by worker 3 with Thread[vert.x-worker-thread-3,5,main]
+ * Executed by worker 1 with Thread[vert.x-worker-thread-4,5,main]
+ * Executed by worker 3 with Thread[vert.x-worker-thread-3,5,main]
+ * ----
+ *
+ * However the same thread can be used by several verticle:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.WorkerInstancesReplyingLowThreads#main}
+ * ----
+ *
+ * This prints:
+ *
+ * ----
+ * Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
+ * Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
+ * Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
+ * Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
+ * Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
+ * Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
+ * Executed by worker 3 with Thread[vert.x-worker-thread-1,5,main]
+ * Executed by worker 4 with Thread[vert.x-worker-thread-0,5,main]
+ * Executed by worker 3 with Thread[vert.x-worker-thread-1,5,main]
+ * Executed by worker 4 with Thread[vert.x-worker-thread-0,5,main]
+ * ----
+ *
  * Workers can schedule timers, of course the timer will be fired on the same thread:
  *
  * [source,java]
