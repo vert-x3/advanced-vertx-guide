@@ -184,6 +184,34 @@
  * The only eligible way to communicate with other Vert.x component is via the event bus, a worker is allowed
  * to send a message or reply to an incoming message.
  *
+ * Workers can schedule timers, of course the timer will be fired on the same thread:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.TimerOnWorkerThread#main}
+ * ----
+ *
+ * This prints:
+ *
+ * ----
+ * Starting timer on Thread[vert.x-worker-thread-0,5,main]
+ * Timer fired Thread[vert.x-worker-thread-1,5,main] after 1004 ms
+ * ----
+ *
+ * Since the worker thread may block, the delivery cannot be guaranted in time:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.TimerOnWorkerThreadNotGuaranted#main}
+ * ----
+ *
+ * This prints:
+ *
+ * ----
+ * Starting timer on Thread[vert.x-worker-thread-0,5,main]
+ * Timer fired Thread[vert.x-worker-thread-0,5,main] after 2007 ms
+ * ----
+ *
  * Todo : talk about worker instances.
  *
  * === Multithreaded event loop context
