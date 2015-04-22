@@ -18,8 +18,8 @@ Never block the event loop!
 
 The code executed on the event loop should never block the event loop, for instance:
 
-- using a blocking method directly or not, for instance reading a file with the `java.io.FileInputStream` api
-  or a a JDBC connection.
+- using a blocking method directly or, for instance, reading a file with the `java.io.FileInputStream` api
+  or a JDBC connection.
 - doing a long and CPU intensive task
 
 When the event loop is blocked:
@@ -65,26 +65,27 @@ severe consequences on the scalability and the throughput of the application.
 
 == The Context
 
-Beyond the event loop, Vert.x defines the notion of context, that defines the execution context of a Vert.x
-handler.
+Beyond the event loop, Vert.x defines the notion of a context. At a high level, the context can be thought of as
+controlling the scope and order in which a set of handlers are executed.
 
-When such an handler creates new handlers, the same context will be reused when calling these handlers, for instance
-the http server handler created from a Verticle will use the same context than the Verticle.
+Contexts are directly associated with `Verticle` instances as well. Any handler registered within a verticle - whether it
+be an event bus consumer, HTTP server handler, or any other asynchronous operation - will be registered using the verticle's
+context. This behavior allows for a greatly simplified threading model by guaranteeing that associated handlers will
+always be executed on the same thread, thus removing the need for synchronization and other locking mechanisms.
 
-There are three kinds of contexts.
+Vert.x provides three different types of contexts.
 
 - Event loop context
 - Worker context
-- Multithreaded worker context
+- Multi-threaded worker context
 
 === Event loop context
 
-An event loop context executes actions on an event loop. That's the most usual kind of context
-used in Vert.x and the one provided by Vert.x when you create a context, unless a specific settings specify
-a different kind of context.
+An event loop context executes handlers on an event loop. This is the type of context that is the default and most
+commonly used type of context. Verticles deployed without the worker flag will always be deployed with an event loop context.
 
-When Vert.x creates an event loop context, it choses an event loop for this context, the event loop is chosen via a round
-robin algorithm. The same Verticle deployed many times can show it:
+When Vert.x creates an event loop context, it chooses an event loop for this context, the event loop is chosen via a round
+robin algorithm. This can be demonstrated by deploying the same verticle many times:
 
 [source,java]
 ----
@@ -100,7 +101,7 @@ for (int i = 0; i < 20; i++) {
 }
 ----
 
-The result is
+The result is:
 
 ----
 Thread[main,5,main]
@@ -164,10 +165,9 @@ todo: Configuring the event loop, talk about the options for configuring the eve
 
 === Worker context
 
-A worker context, uses a non event loop context, i.e a Thread from a worker pool, it is governed by different rules
-than the event loop context.
-
-First, a worker context is allowed to block and is useful when there is no other choice than using a blocking API.
+Worker contexts are assigned to verticles deployed with the worker option enabled. The worker context is differentiated
+from standard event loop contexts in that workers are executed on a separate worker thread pool. This separation from
+event loop threads allows worker contexts to execute the types of blocking operations that will block the event loop.
 
 A worker context, cannot create servers or clients, since they require an event loop context:
 
@@ -245,7 +245,7 @@ Executed by Thread[vert.x-worker-thread-1,5,main]
 Executed by Thread[vert.x-worker-thread-1,5,main]
 ----
 
-The same worker verticle class can be deployed several times by specyfying the number of instances. This allows
+The same worker verticle class can be deployed several times by specifying the number of instances. This allows
 to concurrently process blocking tasks:
 
 [source,java]
@@ -262,22 +262,11 @@ for (int i = 0;i < 10;i++) {
 }
 ----
 
-Each Verticle will always use the same thread:
+Just as is the case with the event loop context, worker contexts ensure that handlers are only executed on one thread
+at any given time. That is, handlers executed on a worker context will always be executed sequentially - one after the
+other - but different actions may be executed on different threads.
 
-----
-Executed by worker 1 with Thread[vert.x-worker-thread-4,5,main]
-Executed by worker 2 with Thread[vert.x-worker-thread-5,5,main]
-Executed by worker 3 with Thread[vert.x-worker-thread-3,5,main]
-Executed by worker 1 with Thread[vert.x-worker-thread-4,5,main]
-Executed by worker 3 with Thread[vert.x-worker-thread-3,5,main]
-Executed by worker 2 with Thread[vert.x-worker-thread-5,5,main]
-Executed by worker 2 with Thread[vert.x-worker-thread-5,5,main]
-Executed by worker 3 with Thread[vert.x-worker-thread-3,5,main]
-Executed by worker 1 with Thread[vert.x-worker-thread-4,5,main]
-Executed by worker 3 with Thread[vert.x-worker-thread-3,5,main]
-----
-
-However the same thread can be used by several verticle:
+However the same thread can be used by several worker verticles:
 
 [source,java]
 ----
@@ -332,7 +321,7 @@ Starting timer on Thread[vert.x-worker-thread-0,5,main]
 Timer fired Thread[vert.x-worker-thread-1,5,main] after 1004 ms
 ----
 
-Since the worker thread may block, the delivery cannot be guaranted in time:
+Since the worker thread may block, the delivery cannot be guaranteed in time:
 
 [source,java]
 ----
@@ -359,15 +348,18 @@ Timer fired Thread[vert.x-worker-thread-0,5,main] after 2007 ms
 
 Todo : talk about worker instances.
 
-=== Multithreaded event loop context
+=== Multi-threaded worker context
 
-todo
+Multi-threaded contexts are assigned to verticles deployed with the multi-threaded option enabled. Whereas standard
+worker contexts execute actions in order on a variety of threads, the multi-threaded worker context removes the strong
+ordering of events to allow the execution of multiple events concurrently. This means that the user is responsible for
+performing the appropriate concurrency control such as synchronization and locking.
 
 == Dealing with contexts
 
-Using a context is usually transparent, Vert.x will manage implicitely contexts when deploying a Verticle,
-registing an Event Bus handler, etc... However the Vert.x API provides several ways to interact with a Context
-allowing to do manual context switching.
+Using a context is usually transparent, Vert.x will manage contexts implicitly when deploying a Verticle,
+registering an Event Bus handler, etc... However the Vert.x API provides several ways to interact with a Context,
+allowing for manual context switching.
 
 === The current context
 
@@ -379,7 +371,7 @@ Vertx vertx = Vertx.vertx();
 System.out.println("Current context is " + Vertx.currentContext());
 ----
 
-We get obiously `null` no matter the Vertx instance we created before:
+We get obviously `null` no matter the Vertx instance we created before:
 
 ----
 Current context is null
@@ -516,7 +508,7 @@ for instance:
 - etc...
 
 Such _services_ will call back the Verticle that created them at some point, when this happens it will be with
-the *exact same thread*, wether this is an event loop context or a worker context.
+the *exact same thread*, whether this is an event loop context or a worker context.
 
 [source,java]
 ----
@@ -547,7 +539,7 @@ Got reply on Thread[vert.x-eventloop-thread-1,5,main]
 == Embedding Vert.x
 
 When Vert.x is embedded like in a _main_ Java method, the thread creating Vert.x can be any kind of thread, but
-it is certainly not a Vert.x thread. Any action that requires a context will implicitely create a context for
+it is certainly not a Vert.x thread. Any action that requires a context will implicitly create a context for
 achieving this action.
 
 [source,java]
@@ -721,5 +713,5 @@ vertx.runOnContext(v -> {
 });
 ----
 
-This API is somewhat similar to deploing a worker Verticle, however it does not provide any configurability
+This API is somewhat similar to deploying a worker Verticle, however it does not provide any configurability
 about the number of instances, like a worker Verticle provides.
