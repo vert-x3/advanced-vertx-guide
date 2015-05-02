@@ -19,16 +19,26 @@ public class WorkerReplying {
         vertx.eventBus().consumer("the-address", msg -> {
           try {
             Thread.sleep(10);
-            msg.reply("Executed by " + Thread.currentThread());
+            System.out.println("Executed by " + Thread.currentThread());
+            msg.reply("whatever");
           } catch (InterruptedException e) {
             msg.fail(0, "Interrupted");
           }
         });
       }
     }, new DeploymentOptions().setWorker(true));
-    for (int i = 0;i < 10;i++) {
-      vertx.eventBus().send("the-address", "the-message", reply -> {
-        System.out.println(reply.result().body());
+
+    // Send 10 messages
+    send(vertx, 10);
+  }
+
+  static void send(Vertx vertx, int count) {
+    // We send when we get the reply in order to not send all messages at the same time
+    // otherwise they might be using the same worker thread and that would defeat the purpose
+    // of this example
+    if (count >= 0) {
+      vertx.eventBus().send("the-address", count, reply -> {
+        send(vertx, count - 1);
       });
     }
   }

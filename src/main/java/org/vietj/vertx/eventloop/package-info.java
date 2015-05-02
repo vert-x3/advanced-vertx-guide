@@ -198,30 +198,24 @@
  *
  * ----
  * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-1,5,main]
+ * Executed by Thread[vert.x-worker-thread-2,5,main]
+ * Executed by Thread[vert.x-worker-thread-3,5,main]
+ * Executed by Thread[vert.x-worker-thread-4,5,main]
+ * Executed by Thread[vert.x-worker-thread-5,5,main]
+ * Executed by Thread[vert.x-worker-thread-6,5,main]
+ * Executed by Thread[vert.x-worker-thread-7,5,main]
+ * Executed by Thread[vert.x-worker-thread-8,5,main]
+ * Executed by Thread[vert.x-worker-thread-9,5,main]
+ * Executed by Thread[vert.x-worker-thread-10,5,main]
+ * Executed by Thread[vert.x-worker-thread-11,5,main]
  * ----
  *
- * The same worker verticle class can be deployed several times by specifying the number of instances. This allows
- * to concurrently process blocking tasks:
- *
- * [source,java]
- * ----
- * {@link org.vietj.vertx.eventloop.WorkerInstancesReplying#main}
- * ----
+ * The previous example clearly shows that the worker context of the verticle use different worker threads
+ * for delivering the messages:
  *
  * Just as is the case with the event loop context, worker contexts ensure that handlers are only executed on one
  * thread at any given time. That is, handlers executed on a worker context will always be executed
  * sequentially - one after the other - but different actions may be executed on different threads.
- *
- * Todo : give an example of that !!!!
  *
  * However the same thread can be used by several worker verticles:
  *
@@ -245,7 +239,15 @@
  * Executed by worker 4 with Thread[vert.x-worker-thread-0,5,main]
  * ----
  *
- * Workers can schedule timers, of course the timer will be fired on the same thread:
+ * The same worker verticle class can be deployed several times by specifying the number of instances. This allows
+ * to concurrently process blocking tasks:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.WorkerInstancesReplying#main}
+ * ----
+ *
+ * Workers can schedule timers:
  *
  * [source,java]
  * ----
@@ -257,6 +259,32 @@
  * ----
  * Starting timer on Thread[vert.x-worker-thread-0,5,main]
  * Timer fired Thread[vert.x-worker-thread-1,5,main] after 1004 ms
+ * ----
+ *
+ * Again the timer thread is not the same than the thread that created the timer.
+ *
+ * With a periodic timer
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.PeriodicOnWorkerThread#main}
+ * ----
+ *
+ * we get a different thread for each event:
+ *
+ * ----
+ * Starting periodic on Thread[vert.x-worker-thread-0,5,main]
+ * Periodic fired Thread[vert.x-worker-thread-1,5,main] after 1004 ms
+ * Periodic fired Thread[vert.x-worker-thread-2,5,main] after 2004 ms
+ * Periodic fired Thread[vert.x-worker-thread-3,5,main] after 3004 ms
+ * Periodic fired Thread[vert.x-worker-thread-4,5,main] after 4006 ms
+ * Periodic fired Thread[vert.x-worker-thread-5,5,main] after 5004 ms
+ * Periodic fired Thread[vert.x-worker-thread-6,5,main] after 6005 ms
+ * Periodic fired Thread[vert.x-worker-thread-7,5,main] after 7004 ms
+ * Periodic fired Thread[vert.x-worker-thread-8,5,main] after 8005 ms
+ * Periodic fired Thread[vert.x-worker-thread-9,5,main] after 9005 ms
+ * Periodic fired Thread[vert.x-worker-thread-10,5,main] after 10006 ms
+ * Periodic fired Thread[vert.x-worker-thread-11,5,main] after 11006 ms
  * ----
  *
  * Since the worker thread may block, the delivery cannot be guaranteed in time:
