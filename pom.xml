@@ -65,9 +65,25 @@
                 <annotationProcessor>io.vertx.docgen.JavaDocGenProcessor</annotationProcessor>
               </annotationProcessors>
               <compilerArgs>
-                <arg>-Adocgen.output=${asciidoc.dir}/$lang</arg>
+                <arg>-Adocgen.output=${asciidoc.dir}</arg>
               </compilerArgs>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.4.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>org.vietj.vertx.eventloop.Main</mainClass>
+            </configuration>
+            <phase>test</phase>
           </execution>
         </executions>
       </plugin>

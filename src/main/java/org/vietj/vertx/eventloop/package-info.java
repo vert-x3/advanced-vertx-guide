@@ -488,15 +488,13 @@
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.ExecuteBlockingSuccess#main}
+ * {@link org.vietj.vertx.eventloop.ExecuteBlockingSuccess#execute}
  * ----
  *
  * This prints:
  *
  * ----
- * Calling blocking block from Thread[vert.x-eventloop-thread-0,5,main]
- * Computing with Thread[vert.x-worker-thread-0,5,main]
- * Got result in Thread[vert.x-eventloop-thread-0,5,main]
+ * include::org.vietj.vertx.eventloop.ExecuteBlockingSuccess.txt[]
  * ----
  *
  * While the blocking code handler executes with a worker thread, the result handler is executed with the same event

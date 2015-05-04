@@ -10,11 +10,14 @@ import io.vertx.docgen.Source;
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 @Source
-public class ExecuteBlockingSuccess {
+public class ExecuteBlockingSuccess extends TaskBase {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
+    new ExecuteBlockingSuccess().run();
+  }
 
-    Vertx vertx = Vertx.vertx();
+  @Override
+  public void execute(Vertx vertx) {
     vertx.runOnContext(v -> {
 
       // On the event loop

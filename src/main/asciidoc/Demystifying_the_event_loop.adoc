@@ -657,7 +657,6 @@ for using a blocking API:
 
 [source,java]
 ----
-Vertx vertx = Vertx.vertx();
 vertx.runOnContext(v -> {
 
   // On the event loop
@@ -682,9 +681,7 @@ vertx.runOnContext(v -> {
 This prints:
 
 ----
-Calling blocking block from Thread[vert.x-eventloop-thread-0,5,main]
-Computing with Thread[vert.x-worker-thread-0,5,main]
-Got result in Thread[vert.x-eventloop-thread-0,5,main]
+include::org.vietj.vertx.eventloop.ExecuteBlockingSuccess.txt[]
 ----
 
 While the blocking code handler executes with a worker thread, the result handler is executed with the same event
