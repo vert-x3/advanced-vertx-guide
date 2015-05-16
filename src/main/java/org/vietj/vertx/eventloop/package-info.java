@@ -56,16 +56,22 @@
  * The event loop must not be blocked, because it will freeze the parts of the applications using that event loop, with
  * severe consequences on the scalability and the throughput of the application.
  *
- * == The Context
+ * == The context
  *
- * Beyond the event loop, Vert.x defines the notion of a context. At a high level, the context can be thought of as
- * controlling the scope and order in which a set of handlers are executed.
+ * Beyond the event loop, Vert.x defines the notion of a *_context_*. At a high level, the context can be thought of as
+ * controlling the scope and order in which a set of handlers (or tasks created by handlers) are executed.
  *
- * Contexts are directly associated with `Verticle instances as well. Any handler registered within a verticle - whether
- * it be an event bus consumer, HTTP server handler, or any other asynchronous operation - will be registered using
- * the verticle’s context. This behavior allows for a greatly simplified threading model by guaranteeing that
- * associated handlers will always be executed on the same thread, thus removing the need for synchronization and
- * other locking mechanisms.
+ * When the Vert.x API is used for creating callbacks it associates the callback handler with a context. This context
+ * is then used for scheduling the callbacks, when such context is needed:
+ *
+ * - if the current thread is a Vert.x thread, it reuses the context associated with this thread: the context
+ * is propagated.
+ * - otherwise a new context is created for this purpose.
+ *
+ * However there is one case where context propagation does not apply: deploying a Verticle creates a new context
+ * for this Verticle, according to the deployment options of the deployment. Therefore a Verticle is always associated
+ * with a context. Any handler registered within a verticle - whether it be an event bus consumer, HTTP server handler, or any other asynchronous operation - will be registered using
+ * the verticle’s context.
  *
  * Vert.x provides three different types of contexts.
  *
@@ -75,9 +81,18 @@
  *
  * === Event loop context
  *
- * An event loop context executes handlers on an event loop. This is the type of context that is the default and most
- * commonly used type of context. Verticles deployed without the worker flag will always be deployed with an event
- * loop context.
+ * An event loop context executes handlers on an event loop: handlers are executed directly on the IO
+ * threads, as a consequence:
+ *
+ * - an handler will always be executed with the same thread
+ * - an handler must never block the thread, otherwise it will create starvation for all the IO tasks associated
+ * with that event loop.
+ *
+ * This behavior allows for a greatly simplified threading model by guaranteeing that associated handlers will
+ * always be executed on the same thread, thus removing the need for synchronization and other locking mechanisms.
+ *
+ * This is the type of context that is the default and most commonly used type of context. Verticles deployed
+ * without the worker flag will always be deployed with an event loop context.
  *
  * When Vert.x creates an event loop context, it chooses an event loop for this context, the event loop is chosen via a round
  * robin algorithm. This can be demonstrated by deploying the same verticle many times:
@@ -156,36 +171,9 @@
  * This separation from event loop threads allows worker contexts to execute the types of blocking operations that
  * will block the event loop.
  *
- * A worker context, cannot create servers or clients, since they require an event loop context:
- *
- * [source,java]
- * ----
- * {@link org.vietj.vertx.eventloop.ServerStartingFromWorker#main}
- * ----
- *
- * Vert.x will fail:
- *
- * ----
- * SEVERE: Cannot use HttpServer in a worker verticle
- * java.lang.IllegalStateException: Cannot use HttpServer in a worker verticle
- * at io.vertx.core.http.impl.HttpServerImpl.<init>(HttpServerImpl.java:130)
- * at io.vertx.core.impl.VertxImpl.createHttpServer(VertxImpl.java:249)
- * at io.vertx.core.impl.VertxImpl.createHttpServer(VertxImpl.java:254)
- * at org.vietj.vertx.eventloop.ServerStartedFromWorker.start(ServerStartedFromWorker.java:19)
- * at io.vertx.core.AbstractVerticle.start(AbstractVerticle.java:111)
- * at io.vertx.core.impl.DeploymentManager.lambda$doDeploy$88(DeploymentManager.java:433)
- * at io.vertx.core.impl.DeploymentManager$$Lambda$2/1792845110.handle(Unknown Source)
- * at io.vertx.core.impl.ContextImpl.lambda$wrapTask$3(ContextImpl.java:263)
- * at io.vertx.core.impl.ContextImpl$$Lambda$3/381707837.run(Unknown Source)
- * at io.vertx.core.impl.OrderedExecutorFactory$OrderedExecutor.lambda$new$180(OrderedExecutorFactory.java:91)
- * at io.vertx.core.impl.OrderedExecutorFactory$OrderedExecutor$$Lambda$1/1211888640.run(Unknown Source)
- * at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
- * at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
- * at java.lang.Thread.run(Thread.java:745)
- * ----
- *
- * The only eligible way to communicate with other Vert.x component is via the event bus, a worker is allowed
- * to send a message or reply to an incoming message.
+ * Just as is the case with the event loop context, worker contexts ensure that handlers are only executed on one
+ * thread at any given time. That is, handlers executed on a worker context will always be executed
+ * sequentially - one after the other - but different actions may be executed on different threads.
  *
  * A common pattern is to deploy worker verticles and send them a message and then the worker replies to this message:
  *
@@ -213,9 +201,6 @@
  * The previous example clearly shows that the worker context of the verticle use different worker threads
  * for delivering the messages:
  *
- * Just as is the case with the event loop context, worker contexts ensure that handlers are only executed on one
- * thread at any given time. That is, handlers executed on a worker context will always be executed
- * sequentially - one after the other - but different actions may be executed on different threads.
  *
  * However the same thread can be used by several worker verticles:
  *
@@ -311,6 +296,8 @@
  * responsible for performing the appropriate concurrency control such as synchronization and locking.
  *
  * todo
+ *
+ * == Execute blocking!!!
  *
  * == Dealing with contexts
  *
@@ -410,6 +397,63 @@
  * The `vertx.runOnContext(Handler<Void>)` is a shortcut for what we have seen before: it calls the
  * `getOrCreateContext` method and schedule a task for execution via the `context.runOnContext(Handler<Void>)` method.
  *
+ * === Blocking
+ *
+ * Before Vert.x 3, using blocking API required to deploy a worker Verticle. Vert.x 3 provides an additional API
+ * for using a blocking API:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.ExecuteBlockingSuccess#execute}
+ * ----
+ *
+ * This prints:
+ *
+ * ----
+ * include::org.vietj.vertx.eventloop.ExecuteBlockingSuccess.txt[]
+ * ----
+ *
+ * While the blocking code handler executes with a worker thread, the result handler is executed with the same event
+ * loop context.
+ *
+ * The blocking code handler is provided a `Future` argument that is used for signaling when the result is obtained,
+ * usually a result of the blocking API.
+ *
+ * When the blocking code handler fails the result handler will get the failure as cause of the async result object:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure#main}
+ * ----
+ *
+ * This prints:
+ *
+ * ----
+ * Blocking code failed
+ * java.lang.RuntimeException
+ * at org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure.lambda$null$0(ExecuteBlockingThrowingFailure.java:19)
+ * at org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure$$Lambda$4/163784093.handle(Unknown Source)
+ * at io.vertx.core.impl.ContextImpl.lambda$executeBlocking$2(ContextImpl.java:217)
+ * at io.vertx.core.impl.ContextImpl$$Lambda$6/1645685573.run(Unknown Source)
+ * at io.vertx.core.impl.OrderedExecutorFactory$OrderedExecutor.lambda$new$180(OrderedExecutorFactory.java:91)
+ * at io.vertx.core.impl.OrderedExecutorFactory$OrderedExecutor$$Lambda$2/1053782781.run(Unknown Source)
+ * at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
+ * at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
+ * at java.lang.Thread.run(Thread.java:745)
+ * ----
+ *
+ * The blocking code handler can also report the failure on the `Future` object:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.ExecuteBlockingFailingFuture#main}
+ * ----
+ *
+ * This API is somewhat similar to deploying a worker Verticle, however it does not provide any configurability
+ * about the number of instances, like a worker Verticle provides.
+ *
+ * todo : talk about the new {@link io.vertx.core.Context#isEventLoopContext()} ()}, {@link io.vertx.core.Context#isOnEventLoopThread()} ()}, etc...
+ *
  * == Verticles
  *
  * Vert.x guarantees that the same Verticle will always be called from the same thread, whether or not the Verticle
@@ -422,8 +466,8 @@
  * - Registering an event but handler
  * - etc...
  *
- * Such _services_ will call back the Verticle that created them at some point, when this happens it will be with
- * the *exact same thread*, whether this is an event loop context or a worker context.
+ * Such _services_ will call back the Verticle that created them at some point, how this happens is according
+ * to the context.
  *
  * [source,java]
  * ----
@@ -481,60 +525,45 @@
  *
  * Now we can share state between the two servers safely.
  *
- * == Blocking
+ * == Servers
  *
- * Before Vert.x 3, using blocking API required to deploy a worker Verticle. Vert.x 3 provides an additional API
- * for using a blocking API:
+ * === Servers with event loop contexts
  *
- * [source,java]
- * ----
- * {@link org.vietj.vertx.eventloop.ExecuteBlockingSuccess#execute}
- * ----
+ * todo
  *
- * This prints:
+ * === Servers with worker contexts
  *
- * ----
- * include::org.vietj.vertx.eventloop.ExecuteBlockingSuccess.txt[]
- * ----
+ * todo
  *
- * While the blocking code handler executes with a worker thread, the result handler is executed with the same event
- * loop context.
+ * == Clients
  *
- * The blocking code handler is provided a `Future` argument that is used for signaling when the result is obtained,
- * usually a result of the blocking API.
+ * === Clients with event loop contexts
  *
- * When the blocking code handler fails the result handler will get the failure as cause of the async result object:
+ * todo
  *
- * [source,java]
- * ----
- * {@link org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure#main}
- * ----
+ * === Clients with worker contexts
  *
- * This prints:
+ * todo
  *
- * ----
- * Blocking code failed
- * java.lang.RuntimeException
- * at org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure.lambda$null$0(ExecuteBlockingThrowingFailure.java:19)
- * at org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure$$Lambda$4/163784093.handle(Unknown Source)
- * at io.vertx.core.impl.ContextImpl.lambda$executeBlocking$2(ContextImpl.java:217)
- * * at io.vertx.core.impl.ContextImpl$$Lambda$6/1645685573.run(Unknown Source)
- * at io.vertx.core.impl.OrderedExecutorFactory$OrderedExecutor.lambda$new$180(OrderedExecutorFactory.java:91)
- * at io.vertx.core.impl.OrderedExecutorFactory$OrderedExecutor$$Lambda$2/1053782781.run(Unknown Source)
- * at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
- * at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
- * at java.lang.Thread.run(Thread.java:745)
- * ----
+ * == Timers
  *
- * The blocking code handler can also report the failure on the `Future` object:
+ * === Timers with event loop contexts
  *
- * [source,java]
- * ----
- * {@link org.vietj.vertx.eventloop.ExecuteBlockingFailingFuture#main}
- * ----
+ * todo
  *
- * This API is somewhat similar to deploying a worker Verticle, however it does not provide any configurability
- * about the number of instances, like a worker Verticle provides.
+ * === Timers with worker contexts
+ *
+ * todo
+ *
+ * == Event bus
+ *
+ * === Event bus with event loop contexts
+ *
+ * todo
+ *
+ * === Event bus in worker contexts
+ *
+ * todo
  *
  */
 @Document(fileName = "Demystifying_the_event_loop.adoc")
