@@ -551,47 +551,35 @@
  *
  * Now we can share state between the two servers safely.
  *
- * == Servers
+ * == Vert.x Core apis
  *
- * === Servers with event loop contexts
+ * Vert.x API consumes handlers and assign them to context, this section provides a quick overview of the Vert.x
+ * Core APIs.
  *
- * todo
+ * === TCP Servers
  *
- * === Servers with worker contexts
+ * TCP servers (HttpServer and NetServer) can run with both event loop and worker context. A TCP server consumes
+ * a context for the various handlers it uses.
  *
- * todo
+ * A worker server uses under the hood an event loop for its IO operations, however the worker context is used
+ * for calling the registered handlers. Consequently a worker server can block directly, when it happens, this will
+ * not have consequences on the underlying event loop, however it does impact directly the server, as this particular
+ * server will be blocked: of course the server can be scaled to many workers to handle multiple blocking requests
+ * concurrently, this is the classic multithreaded server model.
  *
  * == Clients
- *
- * === Clients with event loop contexts
- *
- * todo
- *
- * === Clients with worker contexts
  *
  * todo
  *
  * == Timers
  *
- * === Timers with event loop contexts
- *
- * todo
- *
- * === Timers with worker contexts
- *
  * todo
  *
  * == Event bus
  *
- * === Event bus with event loop contexts
- *
  * todo
  *
  * talk about passing objects between contexts
- *
- * === Event bus in worker contexts
- *
- * todo
  *
  */
 @Document(fileName = "Demystifying_the_event_loop.adoc")
