@@ -2,7 +2,7 @@
  * = Demystifying the Event Loop
  * Julien Viet <julien@julienviet.com>
  *
- * The event loop plays a key role in Vert.x for writing highly scalable and performant network applications.
+ * The event loop plays an important role in Vert.x for writing highly scalable and performant network applications.
  *
  * The event loop is inherited from the Netty library on which Vert.x is based.
  *
@@ -61,17 +61,16 @@
  * Beyond the event loop, Vert.x defines the notion of a *_context_*. At a high level, the context can be thought of as
  * controlling the scope and order in which a set of handlers (or tasks created by handlers) are executed.
  *
- * When the Vert.x API is used for creating callbacks it associates the callback handler with a context. This context
- * is then used for scheduling the callbacks, when such context is needed:
+ * When the Vert.x API _consumes_ callbacks (for instance setting an `HttpServer` request handler), it associates a callback handler
+ * with a context. This context is then used for scheduling the callbacks, when such context is needed:
  *
- * - if the current thread is a Vert.x thread, it reuses the context associated with this thread: the context
- * is propagated.
+ * - if the current thread is a Vert.x thread, it reuses the context associated with this thread: the context is propagated.
  * - otherwise a new context is created for this purpose.
  *
  * However there is one case where context propagation does not apply: deploying a Verticle creates a new context
  * for this Verticle, according to the deployment options of the deployment. Therefore a Verticle is always associated
- * with a context. Any handler registered within a verticle - whether it be an event bus consumer, HTTP server handler, or any other asynchronous operation - will be registered using
- * the verticle’s context.
+ * with a context. Any handler registered within a verticle - whether it be an event bus consumer, HTTP server handler,
+ * or any other asynchronous operation - will be registered using the verticle’s context.
  *
  * Vert.x provides three different types of contexts.
  *
@@ -81,8 +80,8 @@
  *
  * === Event loop context
  *
- * An event loop context executes handlers on an event loop: handlers are executed directly on the IO
- * threads, as a consequence:
+ * An event loop context executes handlers on an event loop: handlers are executed directly on the IO threads, as
+ * a consequence:
  *
  * - an handler will always be executed with the same thread
  * - an handler must never block the thread, otherwise it will create starvation for all the IO tasks associated
@@ -94,8 +93,8 @@
  * This is the type of context that is the default and most commonly used type of context. Verticles deployed
  * without the worker flag will always be deployed with an event loop context.
  *
- * When Vert.x creates an event loop context, it chooses an event loop for this context, the event loop is chosen via a round
- * robin algorithm. This can be demonstrated by deploying the same verticle many times:
+ * When Vert.x creates an event loop context, it chooses an event loop for this context, the event loop is chosen
+ * via a round robin algorithm. This can be demonstrated by deploying the same verticle many times:
  *
  * [source,java]
  * ----
@@ -162,14 +161,21 @@
  * can be used by different event loop contexts. The previous example shows clearly that a same thread is used
  * for different event loops by the Round Robin policy.
  *
- * todo: Configuring the event loop, talk about the options for configuring the event loop size, etc...
+ * The default number of event loop created by a Vertx instance is twice the number of cores of your CPU. This value can
+ * be overriden when creating a Vertx instance:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.ConfigureThreadPool#eventLoop}
+ * ----
  *
  * === Worker context
  *
  * Worker contexts are assigned to verticles deployed with the worker option enabled. The worker context is
  * differentiated from standard event loop contexts in that workers are executed on a separate worker thread pool.
+ *
  * This separation from event loop threads allows worker contexts to execute the types of blocking operations that
- * will block the event loop.
+ * will block the event loop: blocking such thread will not impact the application other than blocking one thread.
  *
  * Just as is the case with the event loop context, worker contexts ensure that handlers are only executed on one
  * thread at any given time. That is, handlers executed on a worker context will always be executed
@@ -200,7 +206,6 @@
  *
  * The previous example clearly shows that the worker context of the verticle use different worker threads
  * for delivering the messages:
- *
  *
  * However the same thread can be used by several worker verticles:
  *
@@ -248,7 +253,7 @@
  *
  * Again the timer thread is not the same than the thread that created the timer.
  *
- * With a periodic timer
+ * With a periodic timer:
  *
  * [source,java]
  * ----
@@ -286,7 +291,12 @@
  * Timer fired Thread[vert.x-worker-thread-0,5,main] after 2007 ms
  * ----
  *
- * Todo : talk about worker instances.
+ * Just like event loop, the size of the worker thread pool can be configured when creatin a Vertx instance:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.ConfigureThreadPool#eventLoop}
+ * ----
  *
  * === Multi-threaded worker context
  *
@@ -296,8 +306,6 @@
  * responsible for performing the appropriate concurrency control such as synchronization and locking.
  *
  * todo
- *
- * == Execute blocking!!!
  *
  * == Dealing with contexts
  *
@@ -320,7 +328,7 @@
  * Current context is null
  * ----
  *
- * Now the same from a verticle leads to obtaining the Verticle context:
+ * Now the same from a verticle leads to obtaining the `Verticle` context:
  *
  * [source,java]
  * ----
@@ -336,8 +344,8 @@
  *
  * === Creating or reusing a context
  *
- * The `vertx.getOrCreateContext()` returns the context associated with the thread (like `currentContext`) otherwise
- * it creates a new context, associates it to event loop and returns it:
+ * The `vertx.getOrCreateContext()` method returns the context associated with the current thread (like `currentContext`)
+ * otherwise it creates a new context, associates it to an event loop and returns it:
  *
  * [source,java]
  * ----
@@ -452,13 +460,30 @@
  * This API is somewhat similar to deploying a worker Verticle, however it does not provide any configurability
  * about the number of instances, like a worker Verticle provides.
  *
- * todo : talk about the new {@link io.vertx.core.Context#isEventLoopContext()} ()}, {@link io.vertx.core.Context#isOnEventLoopThread()} ()}, etc...
+ * === Determining the kind of context
  *
- * == Verticles
+ * The kind of a context can be determined with the methods:
  *
- * Vert.x guarantees that the same Verticle will always be called from the same thread, whether or not the Verticle
- * is deployed as a worker or not. This implies that any service created from a Verticle will reuse the same context,
- * for instance:
+ * - `Context#isEventLoopContext`
+ * - `Context#isWorkerContext`
+ * - `Context#isMultiThreadedWorkerContext`
+ *
+ * WARNING: the nature of the context does not guarantee the nature of the thread, indeed the `executeBlocking`
+ * method can execute a task with a worker thread in an event loop context
+ *
+ * === Determining the kind of thread
+ *
+ * As said earlier, the nature of the context impacts the concurrency. The `executeBlocking` method can even change
+ * use a worker thread in an event loop context. The kind of context should be properly determined with the static methods:
+ *
+ * - `Context#isOnEventLoopThread()`
+ * - `Context#isOnWorkerThread()`
+ *
+ * === Concurrency
+ *
+ * When the Vert.x API needs a context, it calls the `vertx.getOrCreateContext()` method, when the Vert.x API is used
+ * in a context, for instance when deploying a Verticle. This implies that any service created from this Verticle
+ * will reuse the same context, for instance:
  *
  * - Creating a server
  * - Creating a client
@@ -467,25 +492,26 @@
  * - etc...
  *
  * Such _services_ will call back the Verticle that created them at some point, how this happens is according
- * to the context.
+ * to the context: the context remains the same, however its nature has a direct impact on the concurrency as it
+ * govers the threading model:
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.ContextPropagationFromVerticle#main}
+ * {@link org.vietj.vertx.eventloop.SharingStateInContext#eventLoop}
  * ----
  *
- * This prints:
+ * Deployed as a worker, it needs to use synchronization, pretty much like this:
  *
+ * [source,java]
  * ----
- * Starting verticle with Thread[vert.x-eventloop-thread-1,5,main]
- * Got reply on Thread[vert.x-eventloop-thread-1,5,main]
+ * {@link org.vietj.vertx.eventloop.SharingStateInContext#worker}
  * ----
  *
  * == Embedding Vert.x
  *
- * When Vert.x is embedded like in a _main_ Java method, the thread creating Vert.x can be any kind of thread, but
- * it is certainly not a Vert.x thread. Any action that requires a context will implicitly create a context for
- * achieving this action.
+ * When Vert.x is embedded like in a _main_ Java method or a _junit_ test, the thread creating Vert.x can be any kind of thread, but
+ * it is certainly not a Vert.x thread. Any action that requires a context will implicitly create an event loop context for
+ * executing this action.
  *
  * [source,java]
  * ----
@@ -560,6 +586,8 @@
  * === Event bus with event loop contexts
  *
  * todo
+ *
+ * talk about passing objects between contexts
  *
  * === Event bus in worker contexts
  *

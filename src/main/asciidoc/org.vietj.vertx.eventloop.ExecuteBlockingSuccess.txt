@@ -1,3 +1,3 @@
-Calling blocking block from Thread[vert.x-eventloop-thread-0,5,org.vietj.vertx.eventloop.Main]
+Calling blocking block from Thread[vert.x-eventloop-thread-1,5,org.vietj.vertx.eventloop.Main]
 Computing with Thread[vert.x-worker-thread-0,5,org.vietj.vertx.eventloop.Main]
-Got result in Thread[vert.x-eventloop-thread-0,5,org.vietj.vertx.eventloop.Main]
+Got result in Thread[vert.x-eventloop-thread-1,5,org.vietj.vertx.eventloop.Main]
