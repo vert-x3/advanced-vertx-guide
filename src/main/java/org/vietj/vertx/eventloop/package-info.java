@@ -584,23 +584,20 @@
  * server will be blocked: of course the server can be scaled to many workers to handle multiple blocking requests
  * concurrently, this is the classic multithreaded server model.
  *
- * == Clients
+ * === TCP Clients
  *
  * TCP clients (HttpClient and NetClient) can run with both event loop and worker contexts. Clients don't have a particular
  * context assigned. A context is instead assigned every time a connection or a request is done.
  *
- * Worker clients can be useful to use after a blocking operation.
+ * === Timers
  *
- * == Timers
+ * Every time a timer or periodic is created, a context is assigned, this context is then used when the timer or
+ * periodic fires. Event bus or worker contexts are allowed.
  *
+ * === Event bus
  *
- *
- * == Event bus
- *
- * todo
- *
- * talk about passing objects between contexts
- *
+ * A context is assigned when an handler is registered for consuming a message, it can be a registered consumer
+ * or registering a message reply handler. Event bus or worker contexts are allowed.
  */
 @Document(fileName = "Demystifying_the_event_loop.adoc")
 package org.vietj.vertx.eventloop;
