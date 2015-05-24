@@ -418,7 +418,9 @@
  * This prints:
  *
  * ----
- * include::org.vietj.vertx.eventloop.ExecuteBlockingSuccess.txt[]
+ * Calling blocking block from Thread[vert.x-eventloop-thread-0,5,main]
+ * Computing with Thread[vert.x-worker-thread-0,5,main]
+ * Got result in Thread[vert.x-eventloop-thread-0,5,main]
  * ----
  *
  * While the blocking code handler executes with a worker thread, the result handler is executed with the same event
@@ -457,8 +459,23 @@
  * {@link org.vietj.vertx.eventloop.ExecuteBlockingFailingFuture#main}
  * ----
  *
- * This API is somewhat similar to deploying a worker Verticle, however it does not provide any configurability
- * about the number of instances, like a worker Verticle provides.
+ * Obviously executing a task from the blocking task on the context will use the event loop:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.ExecuteBlockingRunOnContext#execute}
+ * ----
+ *
+ * Which outputs:
+ *
+ * ----
+ * Calling blocking block from Thread[vert.x-eventloop-thread-0,5,main]
+ * Computing with Thread[vert.x-worker-thread-0,5,main]
+ * Running on context from the worker Thread[vert.x-eventloop-thread-0,5,main]
+ * ----
+ *
+ * This API is somewhat similar to deploying a worker Verticle, although its purpose is to execute a single
+ * blocking operation from an event loop context.
  *
  * === Determining the kind of context
  *
@@ -558,7 +575,7 @@
  *
  * === TCP Servers
  *
- * TCP servers (HttpServer and NetServer) can run with both event loop and worker context. A TCP server consumes
+ * TCP servers (HttpServer and NetServer) can run with both event loop and worker contexts. A TCP server consumes
  * a context for the various handlers it uses.
  *
  * A worker server uses under the hood an event loop for its IO operations, however the worker context is used
@@ -569,11 +586,14 @@
  *
  * == Clients
  *
- * todo
+ * TCP clients (HttpClient and NetClient) can run with both event loop and worker contexts. Clients don't have a particular
+ * context assigned. A context is instead assigned every time a connection or a request is done.
+ *
+ * Worker clients can be useful to use after a blocking operation.
  *
  * == Timers
  *
- * todo
+ *
  *
  * == Event bus
  *
