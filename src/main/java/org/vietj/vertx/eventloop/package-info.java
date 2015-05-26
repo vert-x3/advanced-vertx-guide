@@ -423,13 +423,13 @@
  * Got result in Thread[vert.x-eventloop-thread-0,5,main]
  * ----
  *
- * While the blocking code handler executes with a worker thread, the result handler is executed with the same event
+ * While the blocking action executes with a worker thread, the result handler is executed with the same event
  * loop context.
  *
- * The blocking code handler is provided a `Future` argument that is used for signaling when the result is obtained,
+ * The blocking action is provided a `Future` argument that is used for signaling when the result is obtained,
  * usually a result of the blocking API.
  *
- * When the blocking code handler fails the result handler will get the failure as cause of the async result object:
+ * When the blocking action fails the result handler will get the failure as cause of the async result object:
  *
  * [source,java]
  * ----
@@ -452,14 +452,14 @@
  * at java.lang.Thread.run(Thread.java:745)
  * ----
  *
- * The blocking code handler can also report the failure on the `Future` object:
+ * The blocking action can also report the failure on the `Future` object:
  *
  * [source,java]
  * ----
  * {@link org.vietj.vertx.eventloop.ExecuteBlockingFailingFuture#main}
  * ----
  *
- * Obviously executing a task from the blocking task on the context will use the event loop:
+ * Obviously executing a task from the blocking action on the context will use the event loop:
  *
  * [source,java]
  * ----
@@ -476,6 +476,9 @@
  *
  * This API is somewhat similar to deploying a worker Verticle, although its purpose is to execute a single
  * blocking operation from an event loop context.
+ *
+ * CAUTION: while the `executeBlocking` is a `Vertx` method, the blocking actions are scheduled on the underlying
+ * context and serialized, i.e executed one after another and not in parallel.
  *
  * === Determining the kind of context
  *
