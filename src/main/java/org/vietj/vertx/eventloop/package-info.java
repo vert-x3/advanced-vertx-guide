@@ -539,7 +539,7 @@
  * {@link org.vietj.vertx.eventloop.SharingStateInContext#eventLoop}
  * ----
  *
- * Deployed as a worker, it needs to use synchronization, pretty much like this:
+ * Deployed as a worker, no exclusion is required, however the changes must be visibles between threads, pretty much like this:
  *
  * [source,java]
  * ----

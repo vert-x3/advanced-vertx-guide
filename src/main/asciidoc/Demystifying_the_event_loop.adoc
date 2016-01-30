@@ -755,17 +755,17 @@ vertx.deployVerticle(new AbstractVerticle() {
 });
 ----
 
-Deployed as a worker, it needs to use synchronization, pretty much like this:
+Deployed as a worker, no exclusion is required, however the changes must be visibles between threads, pretty much like this:
 
 [source,java]
 ----
 vertx.deployVerticle(new AbstractVerticle() {
-  AtomicInteger value = new AtomicInteger(0);
+  volatile int value;
   @Override
   public void start() throws Exception {
-    vertx.setPeriodic(100, id -> value.incrementAndGet());
+    vertx.setPeriodic(100, id -> value++);
     vertx.eventBus().consumer("the-address", msg -> {
-      msg.reply(value.get());
+      msg.reply(value);
     });
   }
 }, new DeploymentOptions().setWorker(true));
