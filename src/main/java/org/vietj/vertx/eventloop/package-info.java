@@ -482,10 +482,22 @@
  *
  * Execute blocking for any particular verticle instance uses the same context as that instance.
  *
- * If you call executeBlocking multiple times in any particular instance they will be executed in the order you
+ * By default, if you call `executeBlocking` multiple times in any particular instance they will be executed in the order you
  * called them. If we didn't do that you'd get into a mess, e.g. if you did an insertBlocking to insert
  * some data into a table, followed by another to select from that table, then there'd be no guarantee in which
- * order they occurred so youmight not find your data.
+ * order they occurred so you might not find your data.
+ *
+ * When several blocking tasks are submitted, the current implementation picks an available worker for executing
+ * the first task, after its execution, it will execute any pending tasks. After the executions of all the tasks,
+ * the worker stops and goes back in the worker pool.
+ *
+ * It is possible to execute also unordered blocks, i.e the blocks can be executed in parallel by setting the
+ * `ordered` argument to `false`:
+ *
+ * [source,java]
+ * ----
+ * {@link org.vietj.vertx.eventloop.ExecuteBlockingUnordered#execute}
+ * ----
  *
  * === Determining the kind of context
  *
