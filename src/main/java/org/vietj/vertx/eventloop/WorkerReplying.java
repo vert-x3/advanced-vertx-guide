@@ -40,6 +40,8 @@ public class WorkerReplying {
       vertx.eventBus().send("the-address", count, reply -> {
         send(vertx, count - 1);
       });
+    } else {
+      System.exit(0);
     }
   }
 }

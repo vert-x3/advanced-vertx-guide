@@ -20,6 +20,21 @@ public class TimerOnWorkerThread {
         System.out.println("Starting timer on " + Thread.currentThread());
         vertx.setTimer(1000, id -> {
           System.out.println("Timer fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
+          System.exit(0);
+        });
+      }
+    }, new DeploymentOptions().setWorker(true));
+  }
+
+  public static void source() {
+    Vertx vertx = Vertx.vertx();
+    vertx.deployVerticle(new AbstractVerticle() {
+      @Override
+      public void start() throws Exception {
+        long now = System.currentTimeMillis();
+        System.out.println("Starting timer on " + Thread.currentThread());
+        vertx.setTimer(1000, id -> {
+          System.out.println("Timer fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
         });
       }
     }, new DeploymentOptions().setWorker(true));

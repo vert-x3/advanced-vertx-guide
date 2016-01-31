@@ -24,6 +24,25 @@ public class PeriodicOnWorkerThread {
         vertx.setPeriodic(1000, id -> {
           if (count.decrementAndGet() < 0) {
             vertx.cancelTimer(id);
+            System.exit(0);
+          }
+          System.out.println("Periodic fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
+        });
+      }
+    }, new DeploymentOptions().setWorker(true));
+  }
+
+  public static void source(String[] args) {
+    Vertx vertx = Vertx.vertx();
+    vertx.deployVerticle(new AbstractVerticle() {
+      @Override
+      public void start() throws Exception {
+        AtomicLong count = new AtomicLong(10);
+        long now = System.currentTimeMillis();
+        System.out.println("Starting periodic on " + Thread.currentThread());
+        vertx.setPeriodic(1000, id -> {
+          if (count.decrementAndGet() < 0) {
+            vertx.cancelTimer(id);
           }
           System.out.println("Periodic fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
         });

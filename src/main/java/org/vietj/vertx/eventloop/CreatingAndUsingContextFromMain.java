@@ -15,7 +15,15 @@ public class CreatingAndUsingContextFromMain {
     Context context = vertx.getOrCreateContext();
     context.runOnContext(v -> {
       System.out.println("Current context is " + Vertx.currentContext());
+      System.exit(0);
     });
   }
 
+  public static void source() {
+    Vertx vertx = Vertx.vertx();
+    Context context = vertx.getOrCreateContext();
+    context.runOnContext(v -> {
+      System.out.println("Current context is " + Vertx.currentContext());
+    });
+  }
 }

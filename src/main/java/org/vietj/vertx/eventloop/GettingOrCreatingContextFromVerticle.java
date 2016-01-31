@@ -18,8 +18,19 @@ public class GettingOrCreatingContextFromVerticle {
         Context context = vertx.getOrCreateContext();
         System.out.println(context);
         System.out.println(vertx.getOrCreateContext());
+        System.exit(0);
       }
     });
   }
 
+  public static void source() {
+    Vertx vertx = Vertx.vertx();
+    vertx.deployVerticle(new AbstractVerticle() {
+      public void start() throws Exception {
+        Context context = vertx.getOrCreateContext();
+        System.out.println(context);
+        System.out.println(vertx.getOrCreateContext());
+      }
+    });
+  }
 }

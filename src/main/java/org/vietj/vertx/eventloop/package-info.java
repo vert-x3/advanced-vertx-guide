@@ -27,30 +27,13 @@
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.BlockingEventLoop#main}
+ * {@link org.vietj.vertx.eventloop.BlockingEventLoop#source}
  * ----
  *
  * Vert.x will detect it and log a warn:
  *
  * ----
- * WARNING: Thread Thread[vert.x-eventloop-thread-1,5,main] has been blocked for 2616 ms time 2000000000
- * Apr 04, 2015 1:18:43 AM io.vertx.core.impl.BlockedThreadChecker
- * WARNING: Thread Thread[vert.x-eventloop-thread-1,5,main] has been blocked for 3617 ms time 2000000000
- * Apr 04, 2015 1:18:44 AM io.vertx.core.impl.BlockedThreadChecker
- * WARNING: Thread Thread[vert.x-eventloop-thread-1,5,main] has been blocked for 4619 ms time 2000000000
- * java.lang.Thread.sleep(Native Method)
- * Apr 04, 2015 1:18:45 AM io.vertx.core.impl.BlockedThreadChecker
- * WARNING: Thread Thread[vert.x-eventloop-thread-1,5,main] has been blocked for 5620 ms time 2000000000
- * io.vertx.example.BlockingEventLoop.start(BlockingEventLoop.java:19)
- * io.vertx.core.AbstractVerticle.start(AbstractVerticle.java:111)
- * io.vertx.core.impl.DeploymentManager.lambda$doDeploy$88(DeploymentManager.java:433)
- * io.vertx.core.impl.DeploymentManager$$Lambda$4/2141179775.handle(Unknown Source)
- * io.vertx.core.impl.ContextImpl.lambda$wrapTask$3(ContextImpl.java:263)
- * io.vertx.core.impl.ContextImpl$$Lambda$5/758013696.run(Unknown Source)
- * io.netty.util.concurrent.SingleThreadEventExecutor.runAllTasks(SingleThreadEventExecutor.java:380)
- * io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:357)
- * io.netty.util.concurrent.SingleThreadEventExecutor$2.run(SingleThreadEventExecutor.java:116)
- * java.lang.Thread.run(Thread.java:745)
+ * include::output/BlockingEventLoop.txt[]
  * ----
  *
  * The event loop must not be blocked, because it will freeze the parts of the applications using that event loop, with
@@ -94,66 +77,20 @@
  * without the worker flag will always be deployed with an event loop context.
  *
  * When Vert.x creates an event loop context, it chooses an event loop for this context, the event loop is chosen
- * via a round robin algorithm. This can be demonstrated by deploying the same verticle many times:
+ * via a round robin algorithm. This can be demonstrated by creating a timer many times:
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.CreatingManyEventLoops#main}
+ * {@link org.vietj.vertx.eventloop.CreatingManyEventLoops#source}
  * ----
  *
  * The result is:
  *
  * ----
- * Thread[main,5,main]
- * 0:Thread[vert.x-eventloop-thread-0,5,main]
- * 11:Thread[vert.x-eventloop-thread-11,5,main]
- * 10:Thread[vert.x-eventloop-thread-10,5,main]
- * 13:Thread[vert.x-eventloop-thread-13,5,main]
- * 12:Thread[vert.x-eventloop-thread-12,5,main]
- * 14:Thread[vert.x-eventloop-thread-14,5,main]
- * 16:Thread[vert.x-eventloop-thread-0,5,main]
- * 6:Thread[vert.x-eventloop-thread-6,5,main]
- * 15:Thread[vert.x-eventloop-thread-15,5,main]
- * 5:Thread[vert.x-eventloop-thread-5,5,main]
- * 4:Thread[vert.x-eventloop-thread-4,5,main]
- * 3:Thread[vert.x-eventloop-thread-3,5,main]
- * 2:Thread[vert.x-eventloop-thread-2,5,main]
- * 1:Thread[vert.x-eventloop-thread-1,5,main]
- * 17:Thread[vert.x-eventloop-thread-1,5,main]
- * 18:Thread[vert.x-eventloop-thread-2,5,main]
- * 19:Thread[vert.x-eventloop-thread-3,5,main]
- * 9:Thread[vert.x-eventloop-thread-9,5,main]
- * 8:Thread[vert.x-eventloop-thread-8,5,main]
- * 7:Thread[vert.x-eventloop-thread-7,5,main]
+ * include::output/CreatingManyEventLoops.txt[]
  * ----
  *
- * After sorting the result:
- *
- * ----
- * Thread[main,5,main]
- * 0:Thread[vert.x-eventloop-thread-0,5,main]
- * 1:Thread[vert.x-eventloop-thread-1,5,main]
- * 2:Thread[vert.x-eventloop-thread-2,5,main]
- * 3:Thread[vert.x-eventloop-thread-3,5,main]
- * 4:Thread[vert.x-eventloop-thread-4,5,main]
- * 5:Thread[vert.x-eventloop-thread-5,5,main]
- * 6:Thread[vert.x-eventloop-thread-6,5,main]
- * 7:Thread[vert.x-eventloop-thread-7,5,main]
- * 8:Thread[vert.x-eventloop-thread-8,5,main]
- * 9:Thread[vert.x-eventloop-thread-9,5,main]
- * 10:Thread[vert.x-eventloop-thread-10,5,main]
- * 11:Thread[vert.x-eventloop-thread-11,5,main]
- * 12:Thread[vert.x-eventloop-thread-12,5,main]
- * 13:Thread[vert.x-eventloop-thread-13,5,main]
- * 14:Thread[vert.x-eventloop-thread-14,5,main]
- * 15:Thread[vert.x-eventloop-thread-15,5,main]
- * 16:Thread[vert.x-eventloop-thread-0,5,main]
- * 17:Thread[vert.x-eventloop-thread-1,5,main]
- * 18:Thread[vert.x-eventloop-thread-2,5,main]
- * 19:Thread[vert.x-eventloop-thread-3,5,main]
- * ----
- *
- * As we can see we obtained different event loop threads for each Verticle and the thread are obtained with
+ * As we can see we obtained different event loop threads for each timer and the threads are obtained with
  * a round robin policy. Note that the number of event loop threads by default depends on your CPU but this can
  * be configured.
  *
@@ -191,17 +128,7 @@
  * This prints:
  *
  * ----
- * Executed by Thread[vert.x-worker-thread-1,5,main]
- * Executed by Thread[vert.x-worker-thread-2,5,main]
- * Executed by Thread[vert.x-worker-thread-3,5,main]
- * Executed by Thread[vert.x-worker-thread-4,5,main]
- * Executed by Thread[vert.x-worker-thread-5,5,main]
- * Executed by Thread[vert.x-worker-thread-6,5,main]
- * Executed by Thread[vert.x-worker-thread-7,5,main]
- * Executed by Thread[vert.x-worker-thread-8,5,main]
- * Executed by Thread[vert.x-worker-thread-9,5,main]
- * Executed by Thread[vert.x-worker-thread-10,5,main]
- * Executed by Thread[vert.x-worker-thread-11,5,main]
+ * include::output/WorkerReplying.txt[]
  * ----
  *
  * The previous example clearly shows that the worker context of the verticle use different worker threads
@@ -211,22 +138,13 @@
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.WorkerInstancesReplyingLowThreads#main}
+ * {@link org.vietj.vertx.eventloop.WorkerInstancesReplyingLowThreads#source}
  * ----
  *
  * This prints:
  *
  * ----
- * Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
- * Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
- * Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
- * Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
- * Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
- * Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
- * Executed by worker 3 with Thread[vert.x-worker-thread-1,5,main]
- * Executed by worker 4 with Thread[vert.x-worker-thread-0,5,main]
- * Executed by worker 3 with Thread[vert.x-worker-thread-1,5,main]
- * Executed by worker 4 with Thread[vert.x-worker-thread-0,5,main]
+ * include::output/WorkerInstancesReplyingLowThreads.txt[]
  * ----
  *
  * The same worker verticle class can be deployed several times by specifying the number of instances. This allows
@@ -241,14 +159,13 @@
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.TimerOnWorkerThread#main}
+ * {@link org.vietj.vertx.eventloop.TimerOnWorkerThread#source}
  * ----
  *
  * This prints:
  *
  * ----
- * Starting timer on Thread[vert.x-worker-thread-0,5,main]
- * Timer fired Thread[vert.x-worker-thread-1,5,main] after 1004 ms
+ * include::output/TimerOnWorkerThread.txt[]
  * ----
  *
  * Again the timer thread is not the same than the thread that created the timer.
@@ -257,38 +174,26 @@
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.PeriodicOnWorkerThread#main}
+ * {@link org.vietj.vertx.eventloop.PeriodicOnWorkerThread#source}
  * ----
  *
  * we get a different thread for each event:
  *
  * ----
- * Starting periodic on Thread[vert.x-worker-thread-0,5,main]
- * Periodic fired Thread[vert.x-worker-thread-1,5,main] after 1004 ms
- * Periodic fired Thread[vert.x-worker-thread-2,5,main] after 2004 ms
- * Periodic fired Thread[vert.x-worker-thread-3,5,main] after 3004 ms
- * Periodic fired Thread[vert.x-worker-thread-4,5,main] after 4006 ms
- * Periodic fired Thread[vert.x-worker-thread-5,5,main] after 5004 ms
- * Periodic fired Thread[vert.x-worker-thread-6,5,main] after 6005 ms
- * Periodic fired Thread[vert.x-worker-thread-7,5,main] after 7004 ms
- * Periodic fired Thread[vert.x-worker-thread-8,5,main] after 8005 ms
- * Periodic fired Thread[vert.x-worker-thread-9,5,main] after 9005 ms
- * Periodic fired Thread[vert.x-worker-thread-10,5,main] after 10006 ms
- * Periodic fired Thread[vert.x-worker-thread-11,5,main] after 11006 ms
+ * include::output/TimerOnWorkerThread.txt[]
  * ----
  *
  * Since the worker thread may block, the delivery cannot be guaranteed in time:
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.TimerOnWorkerThreadNotGuaranted#main}
+ * {@link org.vietj.vertx.eventloop.PeriodicOnWorkerThread#main}
  * ----
  *
  * This prints:
  *
  * ----
- * Starting timer on Thread[vert.x-worker-thread-0,5,main]
- * Timer fired Thread[vert.x-worker-thread-0,5,main] after 2007 ms
+ * include::output/PeriodicOnWorkerThread.txt[]
  * ----
  *
  * Just like event loop, the size of the worker thread pool can be configured when creatin a Vertx instance:
@@ -338,8 +243,7 @@
  * We get:
  *
  * ----
- * Current context is io.vertx.core.impl.EventLoopContext@424ff050
- * Verticle context is io.vertx.core.impl.EventLoopContext@424ff050
+ * include::output/CurrentContextFromVerticle.txt[]
  * ----
  *
  * === Creating or reusing a context
@@ -357,27 +261,26 @@
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.CreatingAndUsingContextFromMain#main}
+ * {@link org.vietj.vertx.eventloop.CreatingAndUsingContextFromMain#source}
  * ----
  *
  * This prints:
  *
  * ----
- * Current context is io.vertx.core.impl.EventLoopContext@17979104
+ * include::output/CreatingAndUsingContextFromMain.txt[]
  * ----
  *
  * Calling `getOrCreateContext` from a verticle returns the context associated with the Verticle:
  *
  * [source,java]
  * ----
- * {@link org.vietj.vertx.eventloop.GettingOrCreatingContextFromVerticle#main}
+ * {@link org.vietj.vertx.eventloop.GettingOrCreatingContextFromVerticle#source}
  * ----
  *
  * This prints:
  *
  * ----
- * io.vertx.core.impl.EventLoopContext@10b02dc5
- * io.vertx.core.impl.EventLoopContext@10b02dc5
+ * include::output/GettingOrCreatingContextFromVerticle.txt[]
  * ----
  *
  * === Running on context

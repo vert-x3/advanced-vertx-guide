@@ -7,7 +7,7 @@
   <parent>
     <groupId>io.vertx</groupId>
     <artifactId>vertx-parent</artifactId>
-    <version>5</version>
+    <version>8</version>
   </parent>
 
   <groupId>org.vietj</groupId>
@@ -72,22 +72,6 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.4.0</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>org.vietj.vertx.eventloop.Main</mainClass>
-            </configuration>
-            <phase>test</phase>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
         <groupId>org.asciidoctor</groupId>
         <artifactId>asciidoctor-maven-plugin</artifactId>
         <executions>
@@ -110,5 +94,169 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>exec</id>
+      <properties>
+        <maven.test.skip>true</maven.test.skip>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.4.0</version>
+            <executions>
+              <execution>
+                <id>BlockingEventLoop</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.BlockingEventLoop</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/BlockingEventLoop.txt</outputFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>CreatingManyEventLoops</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.CreatingManyEventLoops</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/CreatingManyEventLoops.txt</outputFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>WorkerReplying</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.WorkerReplying</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/WorkerReplying.txt</outputFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>WorkerReplyingLowThreads</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.WorkerInstancesReplyingLowThreads</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/WorkerInstancesReplyingLowThreads.txt</outputFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>TimerOnWorkerThread</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.TimerOnWorkerThread</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/TimerOnWorkerThread.txt</outputFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>PeriodicOnWorkerThread</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.PeriodicOnWorkerThread</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/PeriodicOnWorkerThread.txt</outputFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>CurrentContextFromVerticle</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.CurrentContextFromVerticle</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/CurrentContextFromVerticle.txt</outputFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>CreatingAndUsingContextFromMain</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.CreatingAndUsingContextFromMain</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/CreatingAndUsingContextFromMain.txt</outputFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>GettingOrCreatingContextFromVerticle</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>test</phase>
+                <configuration>
+                  <executable>java</executable>
+                  <arguments>
+                    <argument>-classpath</argument>
+                    <classpath/>
+                    <argument>org.vietj.vertx.eventloop.GettingOrCreatingContextFromVerticle</argument>
+                  </arguments>
+                  <outputFile>src/main/asciidoc/output/GettingOrCreatingContextFromVerticle.txt</outputFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
 </project>

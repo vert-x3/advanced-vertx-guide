@@ -16,8 +16,18 @@ public class CurrentContextFromVerticle {
       public void start() throws Exception {
         System.out.println("Current context is " + Vertx.currentContext());
         System.out.println("Verticle context is " + context);
+        System.exit(0);
       }
     });
   }
 
+  public static void source() {
+    Vertx vertx = Vertx.vertx();
+    vertx.deployVerticle(new AbstractVerticle() {
+      public void start() throws Exception {
+        System.out.println("Current context is " + Vertx.currentContext());
+        System.out.println("Verticle context is " + context);
+      }
+    });
+  }
 }

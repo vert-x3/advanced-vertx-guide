@@ -12,9 +12,21 @@ public class BlockingEventLoop {
   public static void main(String[] args) {
     Vertx vertx = Vertx.vertx();
     vertx.setTimer(1, id -> {
+      try {
+        Thread.sleep(7000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      System.exit(0);
+    });
+  }
+
+  public static void source() {
+    Vertx vertx = Vertx.vertx();
+    vertx.setTimer(1, id -> {
       // Blocking the Vert.x event loop
       try {
-        Thread.sleep(10000);
+        Thread.sleep(7000);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

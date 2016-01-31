@@ -1,0 +1,2 @@
+Current context is io.vertx.core.impl.EventLoopContext@71379d71
+Verticle context is io.vertx.core.impl.EventLoopContext@71379d71
