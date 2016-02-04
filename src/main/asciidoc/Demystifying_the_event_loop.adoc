@@ -322,6 +322,8 @@ Vertx vertx = Vertx.vertx();
 vertx.deployVerticle(new AbstractVerticle() {
   @Override
   public void start() throws Exception {
+    // Using AtomicLong instead of long because local variables referenced from a lambda expression
+    // must be final or effectively final
     AtomicLong count = new AtomicLong(10);
     long now = System.currentTimeMillis();
     System.out.println("Starting periodic on " + Thread.currentThread());
