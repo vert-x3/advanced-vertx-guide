@@ -15,7 +15,7 @@
   <version>1.0-SNAPSHOT</version>
 
   <properties>
-    <stack.version>3.2.0</stack.version>
+    <stack.version>3.4.0-SNAPSHOT</stack.version>
     <asciidoc.dir>${project.basedir}/src/main/asciidoc</asciidoc.dir>
   </properties>
 
@@ -65,7 +65,8 @@
                 <annotationProcessor>io.vertx.docgen.JavaDocGenProcessor</annotationProcessor>
               </annotationProcessors>
               <compilerArgs>
-                <arg>-Adocgen.output=${asciidoc.dir}</arg>
+                <arg>-Adocgen.output=${asciidoc.dir}/output</arg>
+                <arg>-Adocgen.source=${asciidoc.dir}/Demystifying_the_event_loop.adoc</arg>
               </compilerArgs>
             </configuration>
           </execution>

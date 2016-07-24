@@ -26,7 +26,15 @@ When the event loop is blocked:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.BlockingEventLoop#source}
+Vertx vertx = Vertx.vertx();
+vertx.setTimer(1, id -> {
+  // Blocking the Vert.x event loop
+  try {
+    Thread.sleep(7000);
+  } catch (InterruptedException e) {
+    e.printStackTrace();
+  }
+});
 ----
 
 Vert.x will detect it and log a warn:
@@ -80,7 +88,14 @@ via a round robin algorithm. This can be demonstrated by creating a timer many t
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.CreatingManyEventLoops#source}
+System.out.println(Thread.currentThread());
+Vertx vertx = Vertx.vertx();
+for (int i = 0; i < 20; i++) {
+  int index = i;
+  vertx.setTimer(1, timerID -> {
+    System.out.println(index + ":" + Thread.currentThread());
+  });
+}
 ----
 
 The result is:
@@ -102,7 +117,7 @@ be overriden when creating a Vertx instance:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.ConfigureThreadPool#eventLoop}
+Vertx vertx = Vertx.vertx(new VertxOptions().setEventLoopPoolSize(10));
 ----
 
 === Worker context
@@ -121,7 +136,24 @@ A common pattern is to deploy worker verticles and send them a message and then 
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.WorkerReplying#main}
+Vertx vertx = Vertx.vertx();
+vertx.deployVerticle(new AbstractVerticle() {
+  @Override
+  public void start() throws Exception {
+    vertx.eventBus().consumer("the-address", msg -> {
+      try {
+        Thread.sleep(10);
+        System.out.println("Executed by " + Thread.currentThread());
+        msg.reply("whatever");
+      } catch (InterruptedException e) {
+        msg.fail(0, "Interrupted");
+      }
+    });
+  }
+}, new DeploymentOptions().setWorker(true));
+
+// Send 10 messages
+send(vertx, 10);
 ----
 
 This prints:
@@ -137,7 +169,16 @@ However the same thread can be used by several worker verticles:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.WorkerInstancesReplyingLowThreads#source}
+Vertx vertx = Vertx.vertx(new VertxOptions().setWorkerPoolSize(2));
+vertx.deployVerticle(
+    TheWorker.class.getName(),
+    new DeploymentOptions().setWorker(true).setInstances(4)
+);
+for (int i = 0;i < 10;i++) {
+  vertx.eventBus().send("the-address", "the-message", reply -> {
+    System.out.println(reply.result().body());
+  });
+}
 ----
 
 This prints:
@@ -151,14 +192,33 @@ to concurrently process blocking tasks:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.WorkerInstancesReplying#main}
+Vertx vertx = Vertx.vertx();
+vertx.deployVerticle(
+    TheWorker.class.getName(),
+    new DeploymentOptions().setWorker(true).setInstances(3)
+);
+for (int i = 0;i < 10;i++) {
+  vertx.eventBus().send("the-address", "the-message", reply -> {
+    System.out.println(reply.result().body());
+  });
+}
 ----
 
 Workers can schedule timers:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.TimerOnWorkerThread#source}
+Vertx vertx = Vertx.vertx();
+vertx.deployVerticle(new AbstractVerticle() {
+  @Override
+  public void start() throws Exception {
+    long now = System.currentTimeMillis();
+    System.out.println("Starting timer on " + Thread.currentThread());
+    vertx.setTimer(1000, id -> {
+      System.out.println("Timer fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
+    });
+  }
+}, new DeploymentOptions().setWorker(true));
 ----
 
 This prints:
@@ -173,7 +233,21 @@ With a periodic timer:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.PeriodicOnWorkerThread#source}
+Vertx vertx = Vertx.vertx();
+vertx.deployVerticle(new AbstractVerticle() {
+  @Override
+  public void start() throws Exception {
+    AtomicLong count = new AtomicLong(10);
+    long now = System.currentTimeMillis();
+    System.out.println("Starting periodic on " + Thread.currentThread());
+    vertx.setPeriodic(1000, id -> {
+      if (count.decrementAndGet() < 0) {
+        vertx.cancelTimer(id);
+      }
+      System.out.println("Periodic fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
+    });
+  }
+}, new DeploymentOptions().setWorker(true));
 ----
 
 we get a different thread for each event:
@@ -186,7 +260,22 @@ Since the worker thread may block, the delivery cannot be guaranteed in time:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.PeriodicOnWorkerThread#main}
+Vertx vertx = Vertx.vertx();
+vertx.deployVerticle(new AbstractVerticle() {
+  @Override
+  public void start() throws Exception {
+    AtomicLong count = new AtomicLong(10);
+    long now = System.currentTimeMillis();
+    System.out.println("Starting periodic on " + Thread.currentThread());
+    vertx.setPeriodic(1000, id -> {
+      if (count.decrementAndGet() < 0) {
+        vertx.cancelTimer(id);
+        System.exit(0);
+      }
+      System.out.println("Periodic fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
+    });
+  }
+}, new DeploymentOptions().setWorker(true));
 ----
 
 This prints:
@@ -199,7 +288,7 @@ Just like event loop, the size of the worker thread pool can be configured when 
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.ConfigureThreadPool#eventLoop}
+Vertx vertx = Vertx.vertx(new VertxOptions().setEventLoopPoolSize(10));
 ----
 
 === Multi-threaded worker context
@@ -223,7 +312,8 @@ The static `Vertx.currentContext()` methods returns the current context if there
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.CurrentContextFromMain#main}
+Vertx vertx = Vertx.vertx();
+System.out.println("Current context is " + Vertx.currentContext());
 ----
 
 We get obviously `null` no matter the Vertx instance we created before:
@@ -236,7 +326,14 @@ Now the same from a verticle leads to obtaining the `Verticle` context:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.CurrentContextFromVerticle#main}
+Vertx vertx = Vertx.vertx();
+vertx.deployVerticle(new AbstractVerticle() {
+  public void start() throws Exception {
+    System.out.println("Current context is " + Vertx.currentContext());
+    System.out.println("Verticle context is " + context);
+    System.exit(0);
+  }
+});
 ----
 
 We get:
@@ -252,7 +349,9 @@ otherwise it creates a new context, associates it to an event loop and returns i
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.GettingOrCreatingContextFromMain#main}
+Vertx vertx = Vertx.vertx();
+Context context = vertx.getOrCreateContext();
+System.out.println("Current context is " + Vertx.currentContext());
 ----
 
 Note, that creating a context, will not associate the current thread with this context. This will indeed not
@@ -260,7 +359,11 @@ change the nature of the current thread! However we can now use this context for
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.CreatingAndUsingContextFromMain#source}
+Vertx vertx = Vertx.vertx();
+Context context = vertx.getOrCreateContext();
+context.runOnContext(v -> {
+  System.out.println("Current context is " + Vertx.currentContext());
+});
 ----
 
 This prints:
@@ -273,7 +376,14 @@ Calling `getOrCreateContext` from a verticle returns the context associated with
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.GettingOrCreatingContextFromVerticle#source}
+Vertx vertx = Vertx.vertx();
+vertx.deployVerticle(new AbstractVerticle() {
+  public void start() throws Exception {
+    Context context = vertx.getOrCreateContext();
+    System.out.println(context);
+    System.out.println(vertx.getOrCreateContext());
+  }
+});
 ----
 
 This prints:
@@ -293,7 +403,29 @@ context thread.
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.RunningOnContext#start()}
+Context context = Vertx.currentContext();
+
+System.out.println("Running with context : " + Vertx.currentContext());
+
+// Our blocking action
+Thread thread = new Thread() {
+  public void run() {
+
+    // No context here!
+    System.out.println("Current context : " + Vertx.currentContext());
+
+    int n = getNumberOfFiles();
+    context.runOnContext(v -> {
+
+      // Runs on the same context
+      System.out.println("Runs on the original context : " + Vertx.currentContext());
+      numberOfFiles = n;
+    });
+  }
+};
+
+//
+thread.start();
 ----
 
 This prints:
@@ -314,7 +446,25 @@ for using a blocking API:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.ExecuteBlockingSuccess#execute}
+vertx.runOnContext(v -> {
+
+  // On the event loop
+  System.out.println("Calling blocking block from " + Thread.currentThread());
+
+  Handler<Future<String>> blockingCodeHandler = future -> {
+    // Non event loop
+    System.out.println("Computing with " + Thread.currentThread());
+    future.complete("some result");
+  };
+
+  Handler<AsyncResult<String>> resultHandler = result -> {
+    // Back to the event loop
+    System.out.println("Got result in " + Thread.currentThread());
+  };
+
+  // Execute the blocking code handler and the associated result handler
+  vertx.executeBlocking(blockingCodeHandler, resultHandler);
+});
 ----
 
 This prints:
@@ -335,7 +485,24 @@ When the blocking action fails the result handler will get the failure as cause 
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure#main}
+Vertx vertx = Vertx.vertx();
+vertx.runOnContext(v -> {
+
+  Handler<Future<String>> blockingCodeHandler = future -> {
+    throw new RuntimeException();
+  };
+
+  Handler<AsyncResult<String>> resultHandler = result -> {
+    if (result.succeeded()) {
+      System.out.println("Got result");
+    } else {
+      System.out.println("Blocking code failed");
+      result.cause().printStackTrace(System.out);
+    }
+  };
+
+  vertx.executeBlocking(blockingCodeHandler, resultHandler);
+});
 ----
 
 This prints:
@@ -358,14 +525,52 @@ The blocking action can also report the failure on the `Future` object:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.ExecuteBlockingFailingFuture#main}
+Vertx vertx = Vertx.vertx();
+vertx.runOnContext(v -> {
+
+  Handler<Future<String>> blockingCodeHandler = future -> {
+    try {
+      throw new Exception();
+    } catch (Exception e) {
+      future.fail(e);
+    }
+  };
+
+  Handler<AsyncResult<String>> resultHandler = result -> {
+    if (result.succeeded()) {
+      System.out.println("Got result");
+    } else {
+      System.out.println("Blocking code failed");
+      result.cause().printStackTrace(System.out);
+    }
+  };
+
+  vertx.executeBlocking(blockingCodeHandler, resultHandler);
+});
 ----
 
 Obviously executing a task from the blocking action on the context will use the event loop:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.ExecuteBlockingRunOnContext#execute}
+vertx.runOnContext(v -> {
+
+  // On the event loop
+  System.out.println("Calling blocking block from " + Thread.currentThread());
+
+  Handler<Future<String>> blockingCodeHandler = future -> {
+    // Non event loop
+    System.out.println("Computing with " + Thread.currentThread());
+
+    // Running on context from the worker
+    vertx.runOnContext(v2 -> {
+      System.out.println("Running on context from the worker " + Thread.currentThread());
+    });
+  };
+
+  // Execute the blocking code handler and the associated result handler
+  vertx.executeBlocking(blockingCodeHandler, result -> {});
+});
 ----
 
 Which outputs:
@@ -398,7 +603,13 @@ It is possible to execute also unordered blocks, i.e the blocks can be executed 
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.ExecuteBlockingUnordered#execute}
+vertx.runOnContext(v -> {
+
+  // The blocks are executed on any available worker thread
+  vertx.executeBlocking(blockingCodeHandler1, false, ar -> {});
+  vertx.executeBlocking(blockingCodeHandler2, false, ar -> {});
+  vertx.executeBlocking(blockingCodeHandler3, false, ar -> {});
+});
 ----
 
 === Determining the kind of context
@@ -438,14 +649,32 @@ govers the threading model:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.SharingStateInContext#eventLoop}
+vertx.deployVerticle(new AbstractVerticle() {
+  int value = 0;
+  @Override
+  public void start() throws Exception {
+    vertx.setPeriodic(100, id -> value++);
+    vertx.eventBus().consumer("the-address", msg -> {
+      msg.reply(value);
+    });
+  }
+});
 ----
 
 Deployed as a worker, no exclusion is required, however the changes must be visibles between threads, pretty much like this:
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.SharingStateInContext#worker}
+vertx.deployVerticle(new AbstractVerticle() {
+  volatile int value;
+  @Override
+  public void start() throws Exception {
+    vertx.setPeriodic(100, id -> value++);
+    vertx.eventBus().consumer("the-address", msg -> {
+      msg.reply(value);
+    });
+  }
+}, new DeploymentOptions().setWorker(true));
 ----
 
 == Embedding Vert.x
@@ -456,7 +685,11 @@ executing this action.
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.CreatingAnEventLoopFromHttpServer#main}
+Vertx vertx = Vertx.vertx();
+HttpServer server = vertx.createHttpServer();
+server.listen(result -> {
+  // This runs in a context created just for the purpose of this http server
+});
 ----
 
 When several actions are done, there will use different context and there are high chances they will use a
@@ -464,7 +697,15 @@ different event loop thread.
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.CreatingDifferentEventLoopsFromHttpServers#main}
+Vertx vertx = Vertx.vertx();
+vertx.createHttpServer().requestHandler(requestHandler).listen(result -> {
+  // This executes in a context
+  System.out.println("Current thread is " + Thread.currentThread());
+  });
+vertx.createHttpServer().requestHandler(requestHandler).listen(result -> {
+  // This executes in a different context
+  System.out.println("Current thread is " + Thread.currentThread());
+  });
 ----
 
 This prints:
@@ -480,7 +721,17 @@ When the same context needs to be used then the actions can be grouped with a `r
 
 [source,java]
 ----
-{@link org.vietj.vertx.eventloop.UsingEventLoopsFromHttpServers#main}
+Vertx vertx = Vertx.vertx();
+vertx.runOnContext(v -> {
+  vertx.createHttpServer().requestHandler(requestHandler).listen(result -> {
+    // This executes in a context
+    System.out.println("Current thread is " + Thread.currentThread());
+  });
+  vertx.createHttpServer().requestHandler(requestHandler).listen(result -> {
+    // This executes in the same context
+    System.out.println("Current thread is " + Thread.currentThread());
+  });
+});
 ----
 
 This prints:
