@@ -247,4 +247,149 @@ passed to the `requestHandler`.
 
 === The TIME client
 
-todo.
+The original client example can be found http://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-10[here].
+
+The Vert.x timer client exposes a very simple API:
+
+- a static method for creating a `TimeClient`
+- the client `getTime` method for retrieving a time value from a server
+
+[source,java]
+----
+public interface TimeClient {
+
+  static TimeClient create(Vertx vertx) {
+    return new TimeClientImpl(vertx);
+  }
+
+  void getTime(int port, String host, Handler<AsyncResult<Long>> resultHandler);
+
+}
+----
+
+The TIME client is straightforward to use:
+
+[source,java]
+----
+Vertx vertx = Vertx.vertx();
+
+// Create the time client
+TimeClient server = TimeClient.create(vertx);
+
+// Fetch the time
+server.getTime(8037, "localhost", ar -> {
+  if (ar.succeeded()) {
+    System.out.println("Time is " + new Date(ar.result()));
+  } else {
+    ar.cause().printStackTrace();
+  }
+});
+----
+
+Let's study now how this client can be implemented integrating the existing Netty implementation with Vert.x:
+
+[source,java]
+----
+public class TimeClientImpl implements TimeClient {
+
+  private final Vertx vertx;
+
+  public TimeClientImpl(Vertx vertx) {
+    this.vertx = vertx;
+  }
+
+  @Override
+  public void getTime(int port, String host, Handler<AsyncResult<Long>> resultHandler) {
+
+    // Get the current context as a Vert.x internal context
+    ContextInternal context = (ContextInternal) vertx.getOrCreateContext();
+
+    // The Vert.x internal context gives access to Netty's event loop
+    EventLoop eventLoop = context.nettyEventLoop();
+
+    // Create and configure the Netty bootstrap
+    Bootstrap bootstrap = new Bootstrap();
+    bootstrap.group(eventLoop);
+    bootstrap.channel(NioSocketChannel.class);
+    bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+    bootstrap.handler(new ChannelInitializer<Channel>() {
+      @Override
+      protected void initChannel(Channel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+        pipeline.addLast(new TimeClientHandler(context, resultHandler));
+      }
+    });
+
+    // Connect to the server
+    ChannelFuture channelFuture = bootstrap.connect(host, port);
+    channelFuture.addListener(new ChannelFutureListener() {
+      @Override
+      public void operationComplete(ChannelFuture future) throws Exception {
+        if (!future.isSuccess()) {
+
+          // When we dispatch code to the Vert.x API we need to use executeFromIO
+          context.executeFromIO(() -> {
+            // Upon connect error we call the result handler with a failure
+            resultHandler.handle(io.vertx.core.Future.failedFuture(future.cause()));
+          });
+        }
+      }
+    });
+  }
+}
+----
+
+Like in the server example we use the `ContextInternal` to obtain Netty's `EventLoop` to set on the `Bootstrap`.
+
+The bootstrap setup is very similar to the original example, in case of a failure the application callback
+uses again `executeFromIO` for the same reason thatn before.
+
+The `TimeClientHandler` integration uses also `executeFromIO` for calling back the application:
+
+[source,java]
+----
+public class TimeClientHandler extends ChannelInboundHandlerAdapter {
+
+  private final ContextInternal context;
+  private final Handler<AsyncResult<Long>> resultHandler;
+  private final Future<Long> future = Future.future();
+
+  public TimeClientHandler(ContextInternal context, Handler<AsyncResult<Long>> resultHandler) {
+    this.context = context;
+    this.resultHandler = resultHandler;
+  }
+
+  @Override
+  public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    ByteBuf m = (ByteBuf) msg;
+    long currentTimeMillis;
+    try {
+      currentTimeMillis = (m.readUnsignedInt() - 2208988800L) * 1000L;
+      if (!future.isComplete()) {
+        future.complete(currentTimeMillis);
+
+        // When we dispatch code to the Vert.x API we need to use executeFromIO
+        context.executeFromIO(() -> {
+          // Call the result handler when we get the result
+          resultHandler.handle(future);
+        });
+      }
+      ctx.close();
+    } finally {
+      m.release();
+    }
+  }
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+    if (!future.isComplete()) {
+      future.fail(cause);
+
+      // When we dispatch code to the Vert.x API we need to use executeFromIO
+      context.executeFromIO(() -> {
+        resultHandler.handle(future);
+      });
+    }
+    ctx.close();
+  }
+}
+----

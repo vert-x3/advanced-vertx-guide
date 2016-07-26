@@ -34,7 +34,7 @@ A TIME server serving the current JVM time is then straighforward to implement:
 
 [source,java]
 ----
-{@link org.vietj.vertx.nettyserver.CurrentTimeServer#main}
+{@link org.vietj.vertx.nettyserver.TimeServerExample#main}
 ----
 
 Let's study now how this server can be implemented integrating the existing Netty implementation with Vert.x:
@@ -87,4 +87,40 @@ passed to the `requestHandler`.
 
 === The TIME client
 
-todo.
+The original client example can be found http://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-10[here].
+
+The Vert.x timer client exposes a very simple API:
+
+- a static method for creating a `TimeClient`
+- the client `getTime` method for retrieving a time value from a server
+
+[source,java]
+----
+{@link org.vietj.vertx.nettyclient.TimeClient}
+----
+
+The TIME client is straightforward to use:
+
+[source,java]
+----
+{@link org.vietj.vertx.nettyclient.TimeClientExample#main}
+----
+
+Let's study now how this client can be implemented integrating the existing Netty implementation with Vert.x:
+
+[source,java]
+----
+{@link org.vietj.vertx.nettyclient.impl.TimeClientImpl}
+----
+
+Like in the server example we use the `ContextInternal` to obtain Netty's `EventLoop` to set on the `Bootstrap`.
+
+The bootstrap setup is very similar to the original example, in case of a failure the application callback
+uses again `executeFromIO` for the same reason thatn before.
+
+The `TimeClientHandler` integration uses also `executeFromIO` for calling back the application:
+
+[source,java]
+----
+{@link org.vietj.vertx.nettyclient.impl.TimeClientHandler}
+----

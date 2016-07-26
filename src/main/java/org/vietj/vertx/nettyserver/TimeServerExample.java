@@ -3,7 +3,7 @@ package org.vietj.vertx.nettyserver;
 import io.vertx.core.Vertx;
 import io.vertx.docgen.Source;
 
-public class CurrentTimeServer {
+public class TimeServerExample {
 
   public static void main(String[] args) {
 

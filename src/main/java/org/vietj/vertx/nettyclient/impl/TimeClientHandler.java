@@ -27,7 +27,10 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
       currentTimeMillis = (m.readUnsignedInt() - 2208988800L) * 1000L;
       if (!future.isComplete()) {
         future.complete(currentTimeMillis);
+
+        // When we dispatch code to the Vert.x API we need to use executeFromIO
         context.executeFromIO(() -> {
+          // Call the result handler when we get the result
           resultHandler.handle(future);
         });
       }
@@ -40,6 +43,8 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     if (!future.isComplete()) {
       future.fail(cause);
+
+      // When we dispatch code to the Vert.x API we need to use executeFromIO
       context.executeFromIO(() -> {
         resultHandler.handle(future);
       });
