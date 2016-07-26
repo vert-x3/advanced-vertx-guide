@@ -39,6 +39,7 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
       m.release();
     }
   }
+
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     if (!future.isComplete()) {

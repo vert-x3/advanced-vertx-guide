@@ -6,9 +6,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import org.vietj.vertx.nettyserver.impl.TimeServerImpl;
 
-/**
- * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
- */
 public interface TimeServer {
 
   /**
