@@ -5,6 +5,7 @@ This is a book effort that aims to document more advanced/internal about Vert.x.
 [![Build Status](https://vietj.ci.cloudbees.com/buildStatus/icon?job=vertx-materials)](https://vietj.ci.cloudbees.com/job/vertx-materials/)
 
 - [Asciidoctor](src/main/asciidoc/output/book.adoc)
+- [Html](https://vietj.ci.cloudbees.com/job/vertx-materials/ws/target/docs/vertx-material/book.html)
 
 ## Building the book
 
