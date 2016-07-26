@@ -1,5 +1,4 @@
-= Integrating Netty
-Julien Viet <julien@julienviet.com>
+== Integrating Netty
 
 Netty is one of the dependencies of Vert.x. In fact, Netty powers the networking services of Vert.x. Vert.x Core
 provides the basic network services one can expect from such library:
@@ -16,7 +15,7 @@ This chapter shows the integration of a https://tools.ietf.org/html/rfc868[TIME]
 documentation provides client/server implementations of this protocol, we will focus on the integration of these
 components.
 
-== The TIME server
+=== The TIME server
 
 The original server example can be found http://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[here].
 
@@ -86,6 +85,6 @@ original http://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[`TimeServerHandl
 Again here, we notice the usage of `executeFromIO` when a TIME request happens, the future to be completed is
 passed to the `requestHandler`.
 
-== The TIME client
+=== The TIME client
 
 todo.

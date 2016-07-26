@@ -1,5 +1,4 @@
-= Demystifying the Event Loop
-Julien Viet <julien@julienviet.com>
+== Demystifying the Event Loop
 
 The event loop plays an important role in Vert.x for writing highly scalable and performant network applications.
 
@@ -9,7 +8,7 @@ We often use the expression _running on the event loop_, it has a very specific 
 current Thread is an event loop thread. This article provides an overview of the Vert.x event loop and the concepts
 related to it.
 
-== The golden rule
+=== The golden rule
 
 When using Vert.x there is one Vert.x golden rule to respect:
 
@@ -46,7 +45,7 @@ include::BlockingEventLoop.txt[]
 The event loop must not be blocked, because it will freeze the parts of the applications using that event loop, with
 severe consequences on the scalability and the throughput of the application.
 
-== The context
+=== The context
 
 Beyond the event loop, Vert.x defines the notion of a *_context_*. At a high level, the context can be thought of as
 controlling the scope and order in which a set of handlers (or tasks created by handlers) are executed.
@@ -68,7 +67,7 @@ Vert.x provides three different types of contexts.
 - Worker context
 - Multi-threaded worker context
 
-=== Event loop context
+==== Event loop context
 
 An event loop context executes handlers on an event loop: handlers are executed directly on the IO threads, as
 a consequence:
@@ -120,7 +119,7 @@ be overriden when creating a Vertx instance:
 Vertx vertx = Vertx.vertx(new VertxOptions().setEventLoopPoolSize(10));
 ----
 
-=== Worker context
+==== Worker context
 
 Worker contexts are assigned to verticles deployed with the worker option enabled. The worker context is
 differentiated from standard event loop contexts in that workers are executed on a separate worker thread pool.
@@ -291,7 +290,7 @@ Just like event loop, the size of the worker thread pool can be configured when 
 Vertx vertx = Vertx.vertx(new VertxOptions().setEventLoopPoolSize(10));
 ----
 
-=== Multi-threaded worker context
+==== Multi-threaded worker context
 
 Multi-threaded contexts are assigned to verticles deployed with the multi-threaded option enabled. Whereas standard
 worker contexts execute actions in order on a variety of threads, the multi-threaded worker context removes the
@@ -300,13 +299,13 @@ responsible for performing the appropriate concurrency control such as synchroni
 
 todo
 
-== Dealing with contexts
+=== Dealing with contexts
 
 Using a context is usually transparent, Vert.x will manage contexts implicitly when deploying a Verticle,
 registering an Event Bus handler, etc... However the Vert.x API provides several ways to interact with a Context
 allowing for manual context switching.
 
-=== The current context
+==== The current context
 
 The static `Vertx.currentContext()` methods returns the current context if there is one, it returns null otherwise.
 
@@ -342,7 +341,7 @@ We get:
 include::CurrentContextFromVerticle.txt[]
 ----
 
-=== Creating or reusing a context
+==== Creating or reusing a context
 
 The `vertx.getOrCreateContext()` method returns the context associated with the current thread (like `currentContext`)
 otherwise it creates a new context, associates it to an event loop and returns it:
@@ -392,7 +391,7 @@ This prints:
 include::GettingOrCreatingContextFromVerticle.txt[]
 ----
 
-=== Running on context
+==== Running on context
 
 The `io.vertx.core.Context.runOnContext(Handler)` method can be used when the thread attached to the context needs
 to run a particular task on a context.
@@ -439,7 +438,7 @@ Runs on the original context : io.vertx.core.impl.EventLoopContext@69cdd6d8
 The `vertx.runOnContext(Handler<Void>)` is a shortcut for what we have seen before: it calls the
 `getOrCreateContext` method and schedule a task for execution via the `context.runOnContext(Handler<Void>)` method.
 
-=== Blocking
+==== Blocking
 
 Before Vert.x 3, using blocking API required to deploy a worker Verticle. Vert.x 3 provides an additional API
 for using a blocking API:
@@ -612,7 +611,7 @@ vertx.runOnContext(v -> {
 });
 ----
 
-=== Determining the kind of context
+==== Determining the kind of context
 
 The kind of a context can be determined with the methods:
 
@@ -623,7 +622,7 @@ The kind of a context can be determined with the methods:
 WARNING: the nature of the context does not guarantee the nature of the thread, indeed the `executeBlocking`
 method can execute a task with a worker thread in an event loop context
 
-=== Determining the kind of thread
+==== Determining the kind of thread
 
 As said earlier, the nature of the context impacts the concurrency. The `executeBlocking` method can even change
 use a worker thread in an event loop context. The kind of context should be properly determined with the static methods:
@@ -631,7 +630,7 @@ use a worker thread in an event loop context. The kind of context should be prop
 - `Context#isOnEventLoopThread()`
 - `Context#isOnWorkerThread()`
 
-=== Concurrency
+==== Concurrency
 
 When the Vert.x API needs a context, it calls the `vertx.getOrCreateContext()` method, when the Vert.x API is used
 in a context, for instance when deploying a Verticle. This implies that any service created from this Verticle
@@ -677,7 +676,7 @@ vertx.deployVerticle(new AbstractVerticle() {
 }, new DeploymentOptions().setWorker(true));
 ----
 
-== Embedding Vert.x
+=== Embedding Vert.x
 
 When Vert.x is embedded like in a _main_ Java method or a _junit_ test, the thread creating Vert.x can be any kind of thread, but
 it is certainly not a Vert.x thread. Any action that requires a context will implicitly create an event loop context for
@@ -743,12 +742,12 @@ Current thread is Thread[vert.x-eventloop-thread-0,5,main]
 
 Now we can share state between the two servers safely.
 
-== Vert.x Core apis
+=== Vert.x Core apis
 
 Vert.x API consumes handlers and assign them to context, this section provides a quick overview of the Vert.x
 Core APIs.
 
-=== TCP Servers
+==== TCP Servers
 
 TCP servers (HttpServer and NetServer) can run with both event loop and worker contexts. A TCP server consumes
 a context for the various handlers it uses.
@@ -759,17 +758,17 @@ not have consequences on the underlying event loop, however it does impact direc
 server will be blocked: of course the server can be scaled to many workers to handle multiple blocking requests
 concurrently, this is the classic multithreaded server model.
 
-=== TCP Clients
+==== TCP Clients
 
 TCP clients (HttpClient and NetClient) can run with both event loop and worker contexts. Clients don't have a particular
 context assigned. A context is instead assigned every time a connection or a request is done.
 
-=== Timers
+==== Timers
 
 Every time a timer or periodic is created, a context is assigned, this context is then used when the timer or
 periodic fires. Event bus or worker contexts are allowed.
 
-=== Event bus
+==== Event bus
 
 A context is assigned when an handler is registered for consuming a message, it can be a registered consumer
 or registering a message reply handler. Event bus or worker contexts are allowed.

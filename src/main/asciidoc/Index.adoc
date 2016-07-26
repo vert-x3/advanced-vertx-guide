@@ -1,0 +1,7 @@
+= Random Vert.x bits
+Julien Viet <julien@julienviet.com>
+:toc: left
+
+include::Demystifying_the_event_loop.adoc[]
+
+include::Integrating_Netty.adoc[]
