@@ -90,13 +90,13 @@ Let's study now how this server can be implemented integrating the existing Nett
 ----
 public class TimeServerImpl implements TimeServer {
 
-  private final Vertx vertx;
+  private final VertxInternal vertx;
   private Handler<Future<Long>> requestHandler;
   private ServerBootstrap bootstrap;
   private Channel channel;
 
   public TimeServerImpl(Vertx vertx) {
-    this.vertx = vertx;
+    this.vertx = (VertxInternal) vertx;
   }
 
   @Override
@@ -115,15 +115,19 @@ public class TimeServerImpl implements TimeServer {
     }
 
     // Get the current context as a Vert.x internal context
-    ContextInternal context = (ContextInternal) vertx.getOrCreateContext();
+    ContextInternal context = vertx.getOrCreateContext();
 
     // The Vert.x internal context gives access to Netty's event loop
+    // used as child group
     EventLoop eventLoop = context.nettyEventLoop();
+
+    // The acceptor group is used as parent group
+    EventLoopGroup acceptorGroup = vertx.getAcceptorEventLoopGroup();
 
     // Create and configure the Netty server bootstrap
     bootstrap = new ServerBootstrap();
     bootstrap.channel(NioServerSocketChannel.class);
-    bootstrap.group(eventLoop);
+    bootstrap.group(acceptorGroup, eventLoop);
     bootstrap.childHandler(new ChannelInitializer<Channel>() {
       @Override
       protected void initChannel(Channel ch) throws Exception {
@@ -178,6 +182,9 @@ use the same event loop if one existed before or use a new one.
 
 The method `ContextInternal#nettyEventLoop()` returns this particular event loop and we can use it when the
 `ServerBoostrap` is created.
+
+In addition we use also the `EventLoopGroup` returned by `VertxInternal#getAcceptorEventLoopGroup()` on the
+`ServerBootstrap`. This group is a specific group for accepting connections to the server.
 
 Now that we are more intimate with `ContextInternal`, let's talk of the `ContextInternal#executeFromIO(ContextTask)`
 method. The `executeFromIO` method needs to be used when our server invokes application code, usually an handler

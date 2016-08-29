@@ -7,23 +7,25 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.impl.ContextInternal;
+import io.vertx.core.impl.VertxInternal;
 import org.vietj.vertx.nettyserver.TimeServer;
 
 public class TimeServerImpl implements TimeServer {
 
-  private final Vertx vertx;
+  private final VertxInternal vertx;
   private Handler<Future<Long>> requestHandler;
   private ServerBootstrap bootstrap;
   private Channel channel;
 
   public TimeServerImpl(Vertx vertx) {
-    this.vertx = vertx;
+    this.vertx = (VertxInternal) vertx;
   }
 
   @Override
@@ -42,15 +44,19 @@ public class TimeServerImpl implements TimeServer {
     }
 
     // Get the current context as a Vert.x internal context
-    ContextInternal context = (ContextInternal) vertx.getOrCreateContext();
+    ContextInternal context = vertx.getOrCreateContext();
 
     // The Vert.x internal context gives access to Netty's event loop
+    // used as child group
     EventLoop eventLoop = context.nettyEventLoop();
+
+    // The acceptor group is used as parent group
+    EventLoopGroup acceptorGroup = vertx.getAcceptorEventLoopGroup();
 
     // Create and configure the Netty server bootstrap
     bootstrap = new ServerBootstrap();
     bootstrap.channel(NioServerSocketChannel.class);
-    bootstrap.group(eventLoop);
+    bootstrap.group(acceptorGroup, eventLoop);
     bootstrap.childHandler(new ChannelInitializer<Channel>() {
       @Override
       protected void initChannel(Channel ch) throws Exception {

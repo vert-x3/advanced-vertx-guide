@@ -59,6 +59,9 @@ use the same event loop if one existed before or use a new one.
 The method `ContextInternal#nettyEventLoop()` returns this particular event loop and we can use it when the
 `ServerBoostrap` is created.
 
+In addition we use also the `EventLoopGroup` returned by `VertxInternal#getAcceptorEventLoopGroup()` on the
+`ServerBootstrap`. This group is a specific group for accepting connections to the server.
+
 Now that we are more intimate with `ContextInternal`, let's talk of the `ContextInternal#executeFromIO(ContextTask)`
 method. The `executeFromIO` method needs to be used when our server invokes application code, usually an handler
 provided by the application before starting the server:
