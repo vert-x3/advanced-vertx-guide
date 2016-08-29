@@ -428,7 +428,7 @@ will reuse the same context, for instance:
 - Creating a server
 - Creating a client
 - Creating a timer
-- Registering an event but handler
+- Registering an event bus handler
 - etc...
 
 Such _services_ will call back the Verticle that created them at some point, how this happens is according
