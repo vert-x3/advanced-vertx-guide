@@ -1,0 +1,74 @@
+== Close hooks
+
+Close hooks is an internal feature of Vert.x useful for creating components that are notified when a `Verticle`
+ or a `Vertx` instance is closed. It can be used for implementing _automatic clean-up in verticles_
+ feature, like for a Vert.x http server.
+
+The contract for receving a close notification is defined by the `io.vertx.core.Closeable` interface and
+its `close(Handler<AsyncResult<Void>> completionHandler)` method:
+
+[source,java]
+----
+public class ContextCloseHook implements Closeable {
+
+  private final Context context;
+
+  public ContextCloseHook(Vertx vertx) {
+    this.context = vertx.getOrCreateContext();
+
+    // Get notified when this context closes
+    context.addCloseHook(this);
+  }
+
+  @Override
+  public void close(Handler<AsyncResult<Void>> completionHandler) {
+    // Create a new future
+    Future<Void> fut = Future.future();
+
+    // Set the close handler to be notified when the future resolves
+    fut.setHandler(completionHandler);
+
+    // Do cleanup, the method will complete the future
+    doClose(fut);
+  }
+
+  /**
+   * API close method - this is called by the user
+   */
+  public void close() {
+
+    // Remove the hook
+    context.removeCloseHook(this);
+
+    // Do cleanup, the method will complete the future
+    doClose(Future.future());
+  }
+
+  private void doClose(Future<Void> fut) {
+
+    // No-op, in reality it would be a resource like a Netty channel, a file, etc...
+    fut.complete();
+  }
+}
+----
+
+A `Closeable` instance can be registered to receive a close hook with the method
+The method `Context#addCloseHook` registers a `Closeable` instance to be notified when the context closes:
+
+[source,java]
+----
+context.addCloseHook(closeable);
+----
+
+This is only valid for Verticles, when a Verticle is undeployed, its associated context is closed and
+the shutdown hooks are processed.
+
+The component should still expose a `close` in its API to allow the user to close explicitly the resource, this
+ method should call `Context#removeCloseHook` to remove the hook.
+
+[source,java]
+----
+context.removeCloseHook(closeable);
+----
+
+Likewise `VertxInternal` provides the same operation to receive notifications when a `Vertx` instance is closed.
