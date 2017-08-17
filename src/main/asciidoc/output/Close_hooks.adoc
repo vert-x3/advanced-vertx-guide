@@ -1,8 +1,8 @@
 == Close hooks
 
 Close hooks is an internal feature of Vert.x useful for creating components that are notified when a `Verticle`
- or a `Vertx` instance is closed. It can be used for implementing _automatic clean-up in verticles_
- feature, like for a Vert.x http server.
+or a `Vertx` instance is closed. It can be used for implementing _automatic clean-up in verticles_
+feature, like for a Vert.x http server.
 
 The contract for receving a close notification is defined by the `io.vertx.core.Closeable` interface and
 its `close(Handler<AsyncResult<Void>> completionHandler)` method:
@@ -64,7 +64,7 @@ This is only valid for Verticles, when a Verticle is undeployed, its associated 
 the shutdown hooks are processed.
 
 The component should still expose a `close` in its API to allow the user to close explicitly the resource, this
- method should call `Context#removeCloseHook` to remove the hook.
+method should call `Context#removeCloseHook` to remove the hook.
 
 [source,java]
 ----

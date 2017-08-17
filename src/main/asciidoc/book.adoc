@@ -1,4 +1,5 @@
 = Random Vert.x bits
+
 Julien Viet <julien@julienviet.com>
 :toc: left
 

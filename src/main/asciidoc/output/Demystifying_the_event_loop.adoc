@@ -18,7 +18,7 @@ Never block the event loop!
 The code executed on the event loop should never block the event loop, for instance:
 
 - using a blocking method directly or, for instance, reading a file with the `java.io.FileInputStream` api
-  or a JDBC connection.
+ or a JDBC connection.
 - doing a long and CPU intensive task
 
 When the event loop is blocked:
