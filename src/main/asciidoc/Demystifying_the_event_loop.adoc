@@ -64,8 +64,8 @@ Vert.x provides three different types of contexts.
 An event loop context executes handlers on an event loop: handlers are executed directly on the IO threads, as
 a consequence:
 
-- an handler will always be executed with the same thread
-- an handler must never block the thread, otherwise it will create starvation for all the IO tasks associated
+- A handler will always be executed with the same thread
+- A handler must never block the thread, otherwise it will create starvation for all the IO tasks associated
 with that event loop.
 
 This behavior allows for a greatly simplified threading model by guaranteeing that associated handlers will
