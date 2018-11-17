@@ -11,7 +11,7 @@
   </parent>
 
   <groupId>com.julienviet</groupId>
-  <artifactId>vertx-material</artifactId>
+  <artifactId>advanced-vertx-guide</artifactId>
   <version>1.0-SNAPSHOT</version>
 
   <properties>
@@ -45,6 +45,7 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-docgen</artifactId>
       <scope>provided</scope>
+      <version>0.9.2</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -65,8 +66,8 @@
                 <annotationProcessor>io.vertx.docgen.JavaDocGenProcessor</annotationProcessor>
               </annotationProcessors>
               <compilerArgs>
-                <arg>-Adocgen.output=${asciidoc.dir}/output</arg>
-                <arg>-Adocgen.source=${asciidoc.dir}/book.adoc,${asciidoc.dir}/Demystifying_the_event_loop.adoc,${asciidoc.dir}/Integrating_Netty.adoc,${asciidoc.dir}/Close_hooks.adoc</arg>
+                <arg>-Adocgen.output=${project.basedir}/asciidoc</arg>
+                <arg>-Adocgen.source=${asciidoc.dir}</arg>
               </compilerArgs>
             </configuration>
           </execution>
@@ -81,14 +82,17 @@
               <goal>process-asciidoc</goal>
             </goals>
             <configuration>
-              <sourceDirectory>${asciidoc.dir}/output</sourceDirectory>
+              <sourceDirectory>${project.basedir}/asciidoc</sourceDirectory>
               <outputDirectory>${project.build.directory}/docs/${project.artifactId}</outputDirectory>
               <sourceHighlighter>coderay</sourceHighlighter>
               <preserveDirectories>true</preserveDirectories>
-              <sourceDocumentName>book.adoc</sourceDocumentName>
+              <sourceDocumentName>index.adoc</sourceDocumentName>
               <relativeBaseDir>true</relativeBaseDir>
-              <backend>html</backend>
+              <backend>html5</backend>
               <doctype>book</doctype>
+              <attributes>
+                <toc>left</toc>
+              </attributes>
             </configuration>
             <phase>prepare-package</phase>
           </execution>

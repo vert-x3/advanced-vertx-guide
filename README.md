@@ -1,17 +1,16 @@
-# vertx-material
+# Advanced Vert.x guide
 
-This is a book effort that aims to document more advanced/internal about Vert.x.
+This is an effort that aims to document more advanced/internal about Vert.x as a guide.
 
 [![Build Status](https://vietj.ci.cloudbees.com/buildStatus/icon?job=vertx-materials)](https://vietj.ci.cloudbees.com/job/vertx-materials/)
 
-- [Asciidoctor](src/main/asciidoc/output/book.adoc)
-- [Html](https://vietj.ci.cloudbees.com/job/vertx-materials/ws/target/docs/vertx-material/book.html)
+- [Asciidoctor](asciidoc/index.adoc)
 
 ## Building the book
 
 ```
 > mvn package
-> open target/docs/vertx-material/book.html
+> open target/docs/advanced-vertx-guide/index.html
 ```
 
 ## Project structure

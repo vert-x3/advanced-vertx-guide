@@ -72,8 +72,8 @@ Vert.x provides three different types of contexts.
 An event loop context executes handlers on an event loop: handlers are executed directly on the IO threads, as
 a consequence:
 
-- an handler will always be executed with the same thread
-- an handler must never block the thread, otherwise it will create starvation for all the IO tasks associated
+- A handler will always be executed with the same thread
+- A handler must never block the thread, otherwise it will create starvation for all the IO tasks associated
 with that event loop.
 
 This behavior allows for a greatly simplified threading model by guaranteeing that associated handlers will
@@ -741,34 +741,3 @@ Current thread is Thread[vert.x-eventloop-thread-0,5,main]
 ----
 
 Now we can share state between the two servers safely.
-
-=== Vert.x Core apis
-
-Vert.x API consumes handlers and assign them to context, this section provides a quick overview of the Vert.x
-Core APIs.
-
-==== TCP Servers
-
-TCP servers (HttpServer and NetServer) can run with both event loop and worker contexts. A TCP server consumes
-a context for the various handlers it uses.
-
-A worker server uses under the hood an event loop for its IO operations, however the worker context is used
-for calling the registered handlers. Consequently a worker server can block directly, when it happens, this will
-not have consequences on the underlying event loop, however it does impact directly the server, as this particular
-server will be blocked: of course the server can be scaled to many workers to handle multiple blocking requests
-concurrently, this is the classic multithreaded server model.
-
-==== TCP Clients
-
-TCP clients (HttpClient and NetClient) can run with both event loop and worker contexts. Clients don't have a particular
-context assigned. A context is instead assigned every time a connection or a request is done.
-
-==== Timers
-
-Every time a timer or periodic is created, a context is assigned, this context is then used when the timer or
-periodic fires. Event bus or worker contexts are allowed.
-
-==== Event bus
-
-A context is assigned when an handler is registered for consuming a message, it can be a registered consumer
-or registering a message reply handler. Event bus or worker contexts are allowed.

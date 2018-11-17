@@ -1,7 +1,6 @@
-= Random Vert.x bits
+= Advanced Vert.x Guide
 
 Julien Viet <julien@julienviet.com>
-:toc: left
 
 This is a book effort that aims to document more advanced/internal about Vert.x.
 
