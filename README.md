@@ -2,9 +2,9 @@
 
 This is an effort that aims to document more advanced/internal about Vert.x as a guide.
 
-[![Build Status](https://vietj.ci.cloudbees.com/buildStatus/icon?job=vertx-materials)](https://vietj.ci.cloudbees.com/job/vertx-materials/)
+[![Build Status](https://travis-ci.org/vietj/advanced-vertx-guide.svg?branch=master)](https://travis-ci.org/vietj/advanced-vertx-guide)
 
-- [Asciidoctor](asciidoc/index.adoc)
+- [Online](http://www.julienviet.com/advanced-vertx-guide/)
 
 ## Building the book
 
