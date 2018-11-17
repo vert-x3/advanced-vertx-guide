@@ -52,6 +52,11 @@
       <artifactId>vertx-codetrans</artifactId>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-memcache</artifactId>
+      <version>4.1.19.Final</version>
+    </dependency>
   </dependencies>
 
   <build>

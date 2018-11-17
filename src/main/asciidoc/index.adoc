@@ -6,6 +6,9 @@ This is a book effort that aims to document more advanced/internal about Vert.x.
 
 include::Demystifying_the_event_loop.adoc[]
 
+[[integrating-netty]]
 include::Integrating_Netty.adoc[]
+
+include::Using_Netty_codecs.adoc[]
 
 include::Close_hooks.adoc[]

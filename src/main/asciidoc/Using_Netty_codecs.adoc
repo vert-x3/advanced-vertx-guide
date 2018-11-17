@@ -1,0 +1,197 @@
+== Using Netty TCP codecs
+
+Netty codecs are great for encapsulating and reusing network protocols encoding and decoding. For instance,
+the base Netty distribution provides a few codecs for popular protocols such as HTTP, Redis, Memcached or MQTT.
+
+Vert.x provides client and server built on top of these codecs, e.g the Vert.x HTTP components reuses
+Netty's HTTP codec, akin for Vert.x the MQTT protocols.
+
+You can customize Vert.x TCP client and TCP server to reuse Netty codecs. In fact you can access the Netty
+context associated with a TCP `NetSocket` to customize the pipeline and read/write arbitrary messages.
+
+There is a lot of value in reusing in reusing Netty this way
+
+* extend the Vert.x ecosystem, your clients/servers will be fully integrated with the ecosystem, i.e you can
+  mix and match your middleware with existing Vert.x middleware
+* build on top of `NetSocket` features
+** SSL/TLS
+** Domain sockets
+** Client Socks/HTTP proxy handling
+** Server verticle scaling
+** Metrics
+** SNI handling
+
+In this chapter we will write a client, but you can reuse the same techniques for writing a server on top of
+Netty's codec the same way.
+
+NOTE: everything achieved in this chapter can be also achieved using the techniques shown in the
+      <<integrating-netty>> chapter
+
+=== The Memcached client
+
+As example we will build in this chapter a simple https://memcached.org[Memcached] client on top of Netty's
+Memcached binary codec.
+
+Memcached is a popular free and open source, high-performance, distributed memory object caching system.
+
+There are two version of the protocol, text and binary. In this section we will build a client for the
+binary protocol described in this https://github.com/memcached/memcached/wiki/BinaryProtocolRevamped[document].
+
+The client is very straightforward to use:
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.MemcachedExample#main}
+----
+
+You can easily start a Memcached server with Docker to try this example:
+
+```
+> docker run --rm --name my-memcache -p 11211:11211 -d memcached
+```
+
+=== Anatomy of the Memcached client
+
+The client provides a simple API for connecting to a Memcached server and get/set entries.
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.MemcachedClient}
+----
+
+=== The Memcached codec
+
+The Memcached codec provided by Netty takes care of encoding and decoding Netty `ByteBuf` from and to
+Memcached request and response.
+
+Our client will only require to use Memcached objects:
+
+* write `FullBinaryMemcacheRequest` to the pipeline
+** has a `key` property: a `ByteBuf` to provide the cached entry key
+** has a `opCode` property: an enum indicating the operation, `GET` and `SET`
+** has a `extras` property: a `Bytebuf` to provide extra information, only used in Memcached _SET_ requests
+** has a `content` property: a `Bytebuf` to provide the cached entry value, only used in Memcached _SET_ requests
+* read `FullBinaryMemcacheResponse` from the pipeline
+** has a `status` property: a value equals to `0` when the operation went successful
+** has a `content` property: a `Bytebuf` to provide the cached entry value, only used in Memcached _GET_ responses
+
+NOTE: Memcached provides a richer protocol than `GET` or `SET`, but we don't cover it in this section, as the goal
+is just to be a demonstration and not a complete client
+
+=== Connecting to the server
+
+Let's look first at the client connect implementation:
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.impl.MemcachedClientImpl#connect}
+----
+
+The `connect` implementation creates a Vert.x `NetClient` to connect to the actual Memcached server. When the
+connect is a success
+
+- the Vert.x `NetSocket` is casted to `NetSocketInternal`
+- the Memcached client is created and initialized
+
+The `NetSocketInternal` is an advanced interface that gives access to a few extra methods that we need to build the client:
+
+- `channelHandlerContext()` returns the context of the `NetSocket` Netty's handler
+- `writeMessage(Object, Handler<AsyncResult<Void>>)` writes an object to the pipeline
+- `messsageHandler(Handler<Object>)` sets and handler for processing pipeline messages
+
+The Memcached client `init` method uses some of them to
+
+- initialize the `NetSocket` with the Memcached codec
+- sets a message handler to process the Memcached responses
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.impl.MemcachedClientImpl#init}
+----
+
+=== Request / response correlation
+
+The Memcached protocol is a https://en.wikipedia.org/wiki/Protocol_pipelining[pipelined] protocol, the responses
+are received in the same order than the requests are sent.
+
+Therefore the client needs to maintain an `inflight` FIFO queue which is a simple Java `ConcurrentLinkedQueue`. When
+a request is sent to the Memcached server, the response handler is added to the queue. When the response is received
+the handler is dequeued and can process the response.
+
+=== Sending Memcached request messages
+
+The client has a `writeRequest` method that sends a request to the pipeline:
+
+- write the request message
+- when the write is successful, add the response handler to the `inflight` queue so the responses can be processed
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.impl.MemcachedClientImpl#writeRequest}
+----
+
+=== Processing Memcached response messages
+
+The client has a `processResponse` method that is called each time the Memcached codec decodes a response:
+
+- dequeue the response handler
+- release the Netty message since the response messages are pooled, this method must be called otherwise
+  a memory leak will happen
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.impl.MemcachedClientImpl#processResponse}
+----
+
+=== Sending Memcached GET requests
+
+Memcached _GET_ is fairly straightforward
+
+* create a `FullBinaryMemcacheRequest`
+** set the `key` property
+** set the `opCode` property to `BinaryMemcacheOpcodes.GET`
+* call `writeRequest` passing the request and providing the response handler
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.impl.MemcachedClientImpl#get}
+----
+
+=== Processing Memcached GET responses
+
+Memcached _GET_ responses are processed by `processGetResponse`
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.impl.MemcachedClientImpl#processGetResponse}
+----
+
+The `status` property of the response indicates whether the response is successful or not. We need to pay
+special attention when the `status` is `1` as the client handles it as a Java `null` value.
+
+=== Sending Memcached SET requests
+
+Memcached _SET_ is straightforward too
+
+* create a `FullBinaryMemcacheRequest`
+** set the `key` property
+** set the `opCode` property to `BinaryMemcacheOpcodes.SET`
+** set the `extras` property to a the value `0xDEADBEEF_00001C20`
+*** `0xDEADBEEF` must be used per the protocol
+*** `00001C20` is the expiration time set to 2 hours
+** set the `value` property
+* call `writeRequest` passing the request and providing the response handler
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.impl.MemcachedClientImpl#get}
+----
+
+=== Processing Memcached SET responses
+
+Memcached _SET_ responses are processed by `processSetResponse`
+
+[source,java]
+----
+{@link org.vietj.vertx.memcached.impl.MemcachedClientImpl#processSetResponse}
+----
