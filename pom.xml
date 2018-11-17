@@ -66,9 +66,34 @@
                 <annotationProcessor>io.vertx.docgen.JavaDocGenProcessor</annotationProcessor>
               </annotationProcessors>
               <compilerArgs>
-                <arg>-Adocgen.output=${project.basedir}/asciidoc</arg>
+                <arg>-Adocgen.output=${project.build.directory}/asciidoc</arg>
                 <arg>-Adocgen.source=${asciidoc.dir}</arg>
               </compilerArgs>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/asciidoc</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${asciidoc.dir}</directory>
+                  <filtering>false</filtering>
+                  <excludes>
+                    <exclude>**/*.adoc</exclude>
+                  </excludes>
+                </resource>
+              </resources>
             </configuration>
           </execution>
         </executions>
@@ -82,7 +107,7 @@
               <goal>process-asciidoc</goal>
             </goals>
             <configuration>
-              <sourceDirectory>${project.basedir}/asciidoc</sourceDirectory>
+              <sourceDirectory>${project.build.directory}/asciidoc</sourceDirectory>
               <outputDirectory>${project.build.directory}/docs/${project.artifactId}</outputDirectory>
               <sourceHighlighter>coderay</sourceHighlighter>
               <preserveDirectories>true</preserveDirectories>
