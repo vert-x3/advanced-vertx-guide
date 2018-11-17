@@ -1,0 +1,9 @@
+language: java
+branches:
+  only:
+  - master
+jobs:
+  include:
+    - stage: test
+      jdk: oraclejdk8
+      script: mvn -q clean package -B
