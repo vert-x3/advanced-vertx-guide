@@ -1,5 +1,4 @@
 = Advanced Vert.x Guide
-
 Julien Viet <julien@julienviet.com>
 
 This guide document advanced/internal stuff about Vert.x.

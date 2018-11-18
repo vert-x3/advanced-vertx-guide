@@ -4,7 +4,7 @@ This is an effort that aims to document more advanced/internal about Vert.x as a
 
 [![Build Status](https://travis-ci.org/vietj/advanced-vertx-guide.svg?branch=master)](https://travis-ci.org/vietj/advanced-vertx-guide)
 
-- [Latest guide](http://www.julienviet.com/advanced-vertx-guide/)
+- [Latest version](http://www.julienviet.com/advanced-vertx-guide/)
 
 ## Building the book
 
