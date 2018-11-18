@@ -215,7 +215,9 @@ worker contexts execute actions in order on a variety of threads, the multi-thre
 strong ordering of events to allow the execution of multiple events concurrently. This means that the user is
 responsible for performing the appropriate concurrency control such as synchronization and locking.
 
-todo
+This feature is deprecated since Vert.x 3.6 and will be removed in Vert.x 4. This feature is often confusing for
+the user  and it is possible to achieve the same concurrency with an event-loop context and `executeBlocking` with
+ordered set to `false`.
 
 === Dealing with contexts
 
