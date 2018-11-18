@@ -23,9 +23,7 @@ in the Asciidoc files, allowing real source code to be included in the project w
 
 ## Contributing
 
-I welcome anyone wanting to contribute a chapter to this book. There is no predefined list of chapters, anyone
- is free to contribute content, given that it provides advanced/internal content about Vert.x that can be shared
- freely with the community.
+Anyone is welcome to contribute to this guide given that it improves this guide.
 
-I also welcome any edits, as some are not native English writes (like me), there are often mistakes that a native
-English writer can correct.
+This is GitHub based and integrated with Travis, that means you can fork it, build it in your own
+Travis account and make pull requests.
