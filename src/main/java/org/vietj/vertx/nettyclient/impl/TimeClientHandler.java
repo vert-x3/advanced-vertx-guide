@@ -29,7 +29,7 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
         future.complete(currentTimeMillis);
 
         // When we dispatch code to the Vert.x API we need to use executeFromIO
-        context.executeFromIO(() -> {
+        context.executeFromIO(v -> {
           // Call the result handler when we get the result
           resultHandler.handle(future);
         });
@@ -46,7 +46,7 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
       future.fail(cause);
 
       // When we dispatch code to the Vert.x API we need to use executeFromIO
-      context.executeFromIO(() -> {
+      context.executeFromIO(v -> {
         resultHandler.handle(future);
       });
     }

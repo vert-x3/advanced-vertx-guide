@@ -15,7 +15,7 @@
   <version>1.0-SNAPSHOT</version>
 
   <properties>
-    <stack.version>3.5.4</stack.version>
+    <stack.version>3.6.0.CR1</stack.version>
     <asciidoc.dir>${project.basedir}/src/main/asciidoc</asciidoc.dir>
   </properties>
 

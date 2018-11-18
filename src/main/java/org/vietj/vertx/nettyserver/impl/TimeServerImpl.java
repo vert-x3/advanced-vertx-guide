@@ -73,7 +73,7 @@ public class TimeServerImpl implements TimeServer {
       public void operationComplete(ChannelFuture future) throws Exception {
 
         // When we dispatch code to the Vert.x API we need to use executeFromIO
-        context.executeFromIO(() -> {
+        context.executeFromIO(v -> {
 
           // Callback the listen handler either with a success or a failure
           if (future.isSuccess()) {

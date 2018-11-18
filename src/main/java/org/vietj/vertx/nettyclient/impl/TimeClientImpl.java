@@ -54,7 +54,7 @@ public class TimeClientImpl implements TimeClient {
         if (!future.isSuccess()) {
 
           // When we dispatch code to the Vert.x API we need to use executeFromIO
-          context.executeFromIO(() -> {
+          context.executeFromIO(v -> {
             // Upon connect error we call the result handler with a failure
             resultHandler.handle(io.vertx.core.Future.failedFuture(future.cause()));
           });

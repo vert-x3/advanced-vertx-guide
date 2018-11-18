@@ -43,7 +43,7 @@ public class TimeServerHandler extends ChannelInboundHandlerAdapter {
     });
 
     // Dispatch to the request handler
-    context.executeFromIO(() -> {
+    context.executeFromIO(v -> {
       requestHandler.handle(result);
     });
   }
