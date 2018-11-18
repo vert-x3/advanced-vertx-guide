@@ -2,7 +2,24 @@
 
 Julien Viet <julien@julienviet.com>
 
-This is a book effort that aims to document more advanced/internal about Vert.x.
+This guide document advanced/internal stuff about Vert.x.
+
+It aims to explain and discuss the following
+
+- Vert.x design
+- Internal APIs
+- Integration with Netty
+- Code generation (TBD)
+- Metrics SPI (TBD)
+
+You want to read this guide when you want to
+
+- understand better Vert.x design
+- integrate Vert.x with other libraries
+- perform networking with Netty and Vert.x
+
+Some of the internal Vert.x APIs are exposed in this guide and you should keep in mind that these APIs are subject to
+be changed when it is needed.
 
 include::Demystifying_the_event_loop.adoc[]
 
