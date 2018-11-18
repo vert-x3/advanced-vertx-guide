@@ -7,7 +7,7 @@
   <parent>
     <groupId>io.vertx</groupId>
     <artifactId>vertx-parent</artifactId>
-    <version>9</version>
+    <version>14</version>
   </parent>
 
   <groupId>com.julienviet</groupId>
@@ -106,6 +106,7 @@
       <plugin>
         <groupId>org.asciidoctor</groupId>
         <artifactId>asciidoctor-maven-plugin</artifactId>
+        <version>1.5.7.1</version>
         <executions>
           <execution>
             <goals>
@@ -122,6 +123,9 @@
               <doctype>book</doctype>
               <attributes>
                 <toc>left</toc>
+                <icons>font</icons>
+                <idseparator>-</idseparator>
+                <docinfo1>true</docinfo1>
               </attributes>
             </configuration>
             <phase>prepare-package</phase>
