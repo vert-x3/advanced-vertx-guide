@@ -30,6 +30,7 @@ When the event loop is blocked:
 
 Vert.x will detect it and log a warn:
 
+[source,text]
 ----
 include::BlockingEventLoop.txt[]
 ----
@@ -84,6 +85,7 @@ via a round robin algorithm. This can be demonstrated by creating a timer many t
 
 The result is:
 
+[source,text]
 ----
 include::CreatingManyEventLoops.txt[]
 ----
@@ -125,6 +127,7 @@ A common pattern is to deploy worker verticles and send them a message and then 
 
 This prints:
 
+[source,text]
 ----
 include::WorkerReplying.txt[]
 ----
@@ -141,6 +144,7 @@ However the same thread can be used by several worker verticles:
 
 This prints:
 
+[source,text]
 ----
 include::WorkerInstancesReplyingLowThreads.txt[]
 ----
@@ -162,6 +166,7 @@ Workers can schedule timers:
 
 This prints:
 
+[source,text]
 ----
 include::TimerOnWorkerThread.txt[]
 ----
@@ -177,6 +182,7 @@ With a periodic timer:
 
 we get a different thread for each event:
 
+[source,text]
 ----
 include::TimerOnWorkerThread.txt[]
 ----
@@ -190,6 +196,7 @@ Since the worker thread may block, the delivery cannot be guaranteed in time:
 
 This prints:
 
+[source,text]
 ----
 include::PeriodicOnWorkerThread.txt[]
 ----
@@ -227,6 +234,7 @@ The static `Vertx.currentContext()` methods returns the current context if there
 
 We get obviously `null` no matter the Vertx instance we created before:
 
+[source,text]
 ----
 Current context is null
 ----
@@ -240,6 +248,7 @@ Now the same from a verticle leads to obtaining the `Verticle` context:
 
 We get:
 
+[source,text]
 ----
 include::CurrentContextFromVerticle.txt[]
 ----
@@ -264,6 +273,7 @@ change the nature of the current thread! However we can now use this context for
 
 This prints:
 
+[source,text]
 ----
 include::CreatingAndUsingContextFromMain.txt[]
 ----
@@ -277,6 +287,7 @@ Calling `getOrCreateContext` from a verticle returns the context associated with
 
 This prints:
 
+[source,text]
 ----
 include::GettingOrCreatingContextFromVerticle.txt[]
 ----
@@ -297,6 +308,7 @@ context thread.
 
 This prints:
 
+[source,text]
 ----
 Running with context : io.vertx.core.impl.EventLoopContext@69cdd6d8
 Current context : null
@@ -318,6 +330,7 @@ for using a blocking API:
 
 This prints:
 
+[source,text]
 ----
 Calling blocking block from Thread[vert.x-eventloop-thread-0,5,main]
 Computing with Thread[vert.x-worker-thread-0,5,main]
@@ -339,6 +352,7 @@ When the blocking action fails the result handler will get the failure as cause 
 
 This prints:
 
+[source,text]
 ----
 Blocking code failed
 java.lang.RuntimeException
@@ -369,6 +383,7 @@ Obviously executing a task from the blocking action on the context will use the 
 
 Which outputs:
 
+[source,text]
 ----
 Calling blocking block from Thread[vert.x-eventloop-thread-0,5,main]
 Computing with Thread[vert.x-worker-thread-0,5,main]
@@ -468,6 +483,7 @@ different event loop thread.
 
 This prints:
 
+[source,text]
 ----
 Current thread is Thread[vert.x-eventloop-thread-1,5,main]
 Current thread is Thread[vert.x-eventloop-thread-0,5,main]
@@ -484,6 +500,7 @@ When the same context needs to be used then the actions can be grouped with a `r
 
 This prints:
 
+[source,text]
 ----
 Current thread is Thread[vert.x-eventloop-thread-0,5,main]
 Current thread is Thread[vert.x-eventloop-thread-0,5,main]

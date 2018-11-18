@@ -115,17 +115,21 @@
             <configuration>
               <sourceDirectory>${project.build.directory}/asciidoc</sourceDirectory>
               <outputDirectory>${project.build.directory}/docs/${project.artifactId}</outputDirectory>
-              <sourceHighlighter>coderay</sourceHighlighter>
+              <sourceHighlighter>highlightjs</sourceHighlighter>
               <preserveDirectories>true</preserveDirectories>
               <sourceDocumentName>index.adoc</sourceDocumentName>
               <relativeBaseDir>true</relativeBaseDir>
               <backend>html5</backend>
               <doctype>book</doctype>
               <attributes>
-                <toc>left</toc>
+                <toc>center</toc>
                 <icons>font</icons>
                 <idseparator>-</idseparator>
                 <docinfo1>true</docinfo1>
+                <stylesheet>iconic.css</stylesheet>
+                <stylesdir>${project.basedir}/src/main/stylesheets</stylesdir>
+                <!-- see https://highlightjs.org/static/demo/ -->
+                <highlightjs-theme>tomorrow-night-eighties</highlightjs-theme>
               </attributes>
             </configuration>
             <phase>prepare-package</phase>
