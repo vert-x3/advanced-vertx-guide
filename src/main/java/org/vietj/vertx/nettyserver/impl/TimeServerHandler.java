@@ -25,26 +25,19 @@ public class TimeServerHandler extends ChannelInboundHandlerAdapter {
   @Override
   public void channelActive(final ChannelHandlerContext ctx) {
 
-    // Create a new blank future
-    Future<Long> result = Future.future();
+    Future<Long> result = Future.future(); // <1>
 
-    // The handler is called when the user code complete the future
-    result.setHandler(ar -> {
+    context.executeFromIO(result, requestHandler); // <2>
 
-      // This block is pretty much borrowed from Netty's original example
-      if (ar.succeeded()) {
+    result.setHandler(ar -> { // <3>
+      if (ar.succeeded()) {  // <4>
         ByteBuf time = ctx.alloc().buffer(4);
         time.writeInt((int) (ar.result() / 1000L + 2208988800L));
         ChannelFuture f = ctx.writeAndFlush(time);
         f.addListener((ChannelFutureListener) channelFuture -> ctx.close());
-      } else {
+      } else {  // <5>
         ctx.close();
       }
-    });
-
-    // Dispatch to the request handler
-    context.executeFromIO(v -> {
-      requestHandler.handle(result);
     });
   }
 

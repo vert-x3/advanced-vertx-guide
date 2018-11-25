@@ -10,7 +10,6 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoop;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.impl.ContextInternal;
@@ -30,32 +29,43 @@ public class TimeClientImpl implements TimeClient {
     // Get the current context as a Vert.x internal context
     ContextInternal context = (ContextInternal) vertx.getOrCreateContext();
 
+    Bootstrap bootstrap = createBootstrap(context, resultHandler);
+
+    // Connect to the server
+    connect(bootstrap, context, port, host, resultHandler);
+  }
+
+  private Bootstrap createBootstrap(ContextInternal context, Handler<AsyncResult<Long>> resultHandler) {
     // The Vert.x internal context gives access to Netty's event loop
-    EventLoop eventLoop = context.nettyEventLoop();
+    EventLoop eventLoop = context.nettyEventLoop();  // <1>
 
     // Create and configure the Netty bootstrap
-    Bootstrap bootstrap = new Bootstrap();
+    Bootstrap bootstrap = new Bootstrap(); // <2>
     bootstrap.group(eventLoop);
     bootstrap.channel(NioSocketChannel.class);
     bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
     bootstrap.handler(new ChannelInitializer<Channel>() {
       @Override
       protected void initChannel(Channel ch) throws Exception {
-        ChannelPipeline pipeline = ch.pipeline();
+        ChannelPipeline pipeline = ch.pipeline(); // <4>
         pipeline.addLast(new TimeClientHandler(context, resultHandler));
       }
     });
 
-    // Connect to the server
-    ChannelFuture channelFuture = bootstrap.connect(host, port);
-    channelFuture.addListener(new ChannelFutureListener() {
+    return bootstrap;
+  }
+
+  private void connect(Bootstrap bootstrap,
+                       ContextInternal context,
+                       int port,
+                       String host,
+                       Handler<AsyncResult<Long>> resultHandler) {
+    ChannelFuture connectFuture = bootstrap.connect(host, port); // <1>
+    connectFuture.addListener(new ChannelFutureListener() {
       @Override
       public void operationComplete(ChannelFuture future) throws Exception {
-        if (!future.isSuccess()) {
-
-          // When we dispatch code to the Vert.x API we need to use executeFromIO
-          context.executeFromIO(v -> {
-            // Upon connect error we call the result handler with a failure
+        if (!future.isSuccess()) { // <2>
+          context.executeFromIO(v -> { // <3>
             resultHandler.handle(io.vertx.core.Future.failedFuture(future.cause()));
           });
         }

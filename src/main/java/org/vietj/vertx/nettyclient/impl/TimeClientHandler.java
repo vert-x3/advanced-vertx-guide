@@ -11,8 +11,7 @@ import io.vertx.core.impl.ContextInternal;
 public class TimeClientHandler extends ChannelInboundHandlerAdapter {
 
   private final ContextInternal context;
-  private final Handler<AsyncResult<Long>> resultHandler;
-  private final Future<Long> future = Future.future();
+  private Handler<AsyncResult<Long>> resultHandler;
 
   public TimeClientHandler(ContextInternal context, Handler<AsyncResult<Long>> resultHandler) {
     this.context = context;
@@ -24,17 +23,10 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
     ByteBuf m = (ByteBuf) msg;
     long currentTimeMillis;
     try {
-      currentTimeMillis = (m.readUnsignedInt() - 2208988800L) * 1000L;
-      if (!future.isComplete()) {
-        future.complete(currentTimeMillis);
-
-        // When we dispatch code to the Vert.x API we need to use executeFromIO
-        context.executeFromIO(v -> {
-          // Call the result handler when we get the result
-          resultHandler.handle(future);
-        });
-      }
-      ctx.close();
+      currentTimeMillis = (m.readUnsignedInt() - 2208988800L) * 1000L; // <1>
+      context.executeFromIO(Future.succeededFuture(currentTimeMillis), resultHandler); // <2>
+      resultHandler = null; // <3>
+      ctx.close(); // <4>
     } finally {
       m.release();
     }
@@ -42,13 +34,13 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    if (!future.isComplete()) {
-      future.fail(cause);
+    if (resultHandler != null) {
 
       // When we dispatch code to the Vert.x API we need to use executeFromIO
-      context.executeFromIO(v -> {
-        resultHandler.handle(future);
-      });
+      context.executeFromIO(Future.failedFuture(cause), resultHandler);
+
+      // Set the handler to null
+      resultHandler = null;
     }
     ctx.close();
   }

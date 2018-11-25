@@ -23,6 +23,7 @@ public class TimeServerImpl implements TimeServer {
   private Handler<Future<Long>> requestHandler;
   private ServerBootstrap bootstrap;
   private Channel channel;
+  private ContextInternal context;
 
   public TimeServerImpl(Vertx vertx) {
     this.vertx = (VertxInternal) vertx;
@@ -44,38 +45,37 @@ public class TimeServerImpl implements TimeServer {
     }
 
     // Get the current context as a Vert.x internal context
-    ContextInternal context = vertx.getOrCreateContext();
+    context = vertx.getOrCreateContext();
+    createBootstrap();
 
-    // The Vert.x internal context gives access to Netty's event loop
-    // used as child group
-    EventLoop eventLoop = context.nettyEventLoop();
+    // Bind the server socket
+    bind(host, port, listenHandler);
+  }
 
-    // The acceptor group is used as parent group
-    EventLoopGroup acceptorGroup = vertx.getAcceptorEventLoopGroup();
-
-    // Create and configure the Netty server bootstrap
-    bootstrap = new ServerBootstrap();
+  private void createBootstrap() {
+    EventLoopGroup acceptorGroup = vertx.getAcceptorEventLoopGroup(); // <1>
+    EventLoop eventLoop = context.nettyEventLoop(); // <2>
+    bootstrap = new ServerBootstrap(); // <3>
     bootstrap.channel(NioServerSocketChannel.class);
     bootstrap.group(acceptorGroup, eventLoop);
     bootstrap.childHandler(new ChannelInitializer<Channel>() {
       @Override
       protected void initChannel(Channel ch) throws Exception {
-        ChannelPipeline pipeline = ch.pipeline();
+        ChannelPipeline pipeline = ch.pipeline(); // <4>
         TimeServerHandler handler = new TimeServerHandler(context, requestHandler);
         pipeline.addLast(handler);
       }
     });
+  }
 
-    // Bind the server socket
+  private void bind(String host, int port, Handler<AsyncResult<Void>> listenHandler) {
     ChannelFuture bindFuture = bootstrap.bind(host, port);
     bindFuture.addListener(new ChannelFutureListener() {
       @Override
-      public void operationComplete(ChannelFuture future) throws Exception {
+      public void operationComplete(ChannelFuture future) {
+        context.executeFromIO(v -> { // <1>
 
-        // When we dispatch code to the Vert.x API we need to use executeFromIO
-        context.executeFromIO(v -> {
-
-          // Callback the listen handler either with a success or a failure
+          //
           if (future.isSuccess()) {
             channel = future.channel();
             listenHandler.handle(Future.succeededFuture(null));

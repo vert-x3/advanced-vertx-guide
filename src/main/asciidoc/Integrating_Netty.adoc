@@ -8,22 +8,95 @@ provides the basic network services one can expect from such library:
 - UDP
 - DNS
 
-These are built built with various components from Netty. The Netty community has implemented a wide
+These are built with various components from Netty. The Netty community has implemented a wide
 range of components and this chapter explains how to integrate such components in Vert.x.
 
-This chapter shows the integration of a https://tools.ietf.org/html/rfc868[TIME] prococol client/server. The Netty
-documentation provides client/server implementations of this protocol, we will focus on the integration of these
-components.
+In this chapter we will build a https://tools.ietf.org/html/rfc868[TIME] prococol client and server. The Netty
+documentation provides client/server implementations of this simple protocol, we will focus on the integration
+of these components.
 
-=== The TIME server
+=== Netty integration points
 
-The original server example can be found http://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[here].
+The main purpose of this chapter is to explain some of the Vert.x's internal interfaces. Such interfaces are
+extensions that exposes low level methods to interact with Netty that are useful for components that
+re-use Netty directly.
 
-The Vert.x timer server exposes a very simple API:
+NOTE: Most users don't need to deal with this extension and thus such methods are isolated in an extension interface.
 
-- a static method for creating a `TimeServer`
-- the server `listen` and `close` life cycle methods
-- the `requestHandler` for setting
+==== Bootstrapping clients
+
+`ContextInternal` extends `io.vertx.core.Context` and exposes various Netty integration points like `VertxInternal`.
+
+Usually contexts are obtained from the `Vertx#getOrCreateContext()` method that returns the current execution context
+or create a new one if necessary: when called in a Verticle, `getOrCreateContext()` returns the context of this Verticle, when used in a non Vert.x
+thread like a `main` or a unit test, it creates a new one and returns it.
+
+[source,java]
+----
+{@link org.vietj.vertx.internals.Internals#exampleGetOrCreateContext}
+----
+
+Contexts are always associated with a Netty event loop and thus using this context ensures our components
+re-use the same event loop if one existed before or use a new one.
+
+The `ContextInternal#nettyEventLoop()` method returns this particular event loop and we can use it on
+`Bootstrap` (for client) or `ServerBoostrap` (for server):
+
+[source,java]
+----
+{@link org.vietj.vertx.internals.Internals#exampleBoostrap}
+----
+<1> get the event-loop associated with this context
+<2> create a bootstrap for the client
+
+==== Bootstrapping servers
+
+`VertxInternal` extends `io.vertx.core.Vertx`, among all `VertxInternal#getAcceptorEventLoopGroup()`
+returns an `EventLoopGroup` for accepting connections on a server, it's typical usage is on a `ServerBootstrap`:
+
+[source,java]
+----
+{@link org.vietj.vertx.internals.Internals#exampleServerBootstrap}
+----
+<1> get the event-loop associated with this context
+<2> get the acceptor event-loop group of Vertx
+<2> create the boostrap for the server
+
+==== Handling events
+
+Now that we are more intimate with `ContextInternal`, let's look at how we can use it to handle Netty events such
+as network events, channel life cycle, etc...
+
+The `ContextInternal#executeFromIO` methods is used to dispatch events to the application as it ensures:
+
+- the context concurrency: reuse the current event-loop thread or execute on a worker
+- the thread local association of the current context with the dispatch thread
+- any uncaught exception thrown is reported on the context, such exception is either logged or passed to the `Context#exceptionHandler`
+
+Here is a short example showing a server bootstrap
+
+[source,java]
+----
+{@link org.vietj.vertx.internals.Internals#executeFromIO}
+----
+
+Typical usage of `executeFromIO`:
+
+- listen handler
+- connect handler
+- request handler
+- close handler
+- etc...
+
+=== The server
+
+The original server example can be found https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[here].
+
+The Vert.x TIME server exposes a simple API:
+
+- a static method to create a `TimeServer`
+- two methods: `listen` to bind a server and `close` to unbind
+- the `requestHandler` for setting an handler for handling requests
 
 [source,java]
 ----
@@ -37,62 +110,67 @@ A TIME server serving the current JVM time is then straighforward to implement:
 {@link org.vietj.vertx.nettyserver.TimeServerExample#main}
 ----
 
-Let's study now how this server can be implemented integrating the existing Netty implementation with Vert.x:
+Let's study now the server implementation.
+
+=== The server bootstrap
+
+First let's have a look at the `ServerBootstrap` creation and configuration
 
 [source,java]
 ----
-{@link org.vietj.vertx.nettyserver.impl.TimeServerImpl}
+{@link org.vietj.vertx.nettyserver.impl.TimeServerImpl#createBootstrap}
 ----
+<1> `VertxInternal` returns the event loop group to use as acceptor group
+<2> `ContextInternal` returns the event loop to use as child group
+<3> create and configure the Netty's `ServerBootstrap`
+<4> configure the channel with the `TimeServerHandler` initialized with the server `requestHandler`
 
-The first point in this example is the usage of Vert.x `ContextInternal`, an extension of the
-`io.vertx.core.Context` interface exposing the necessary bits for integrating the Netty API.
+The creation of the `ServerBootstrap` is quite straightforward and is very similar to the original version.
+The main difference is that we reuse the event-loop provided by the Verticle and Vert.x. This ensures that
+our server shares the same resources of our application.
 
-The context is obtained with `Vertx#getOrCreateContext()` method that returns the current execution context
-or create a new one if necessary.
+Notice that the `TimeServerHandler` is initialized with the server `requestHandler`, this handler will be
+used when serving TIME requests.
 
-When used in a Verticle, `getOrCreateContext` return the context of this Verticle, when used in a non Vert.x
-thread like a `main` or a unit test, it creates a new one and returns it.
+=== The server bind
 
-Such context is always associated with a Netty event loop and thus using this context ensures our server
-use the same event loop if one existed before or use a new one.
-
-The method `ContextInternal#nettyEventLoop()` returns this particular event loop and we can use it when the
-`ServerBoostrap` is created.
-
-In addition we use also the `EventLoopGroup` returned by `VertxInternal#getAcceptorEventLoopGroup()` on the
-`ServerBootstrap`. This group is a specific group for accepting connections to the server.
-
-Now that we are more intimate with `ContextInternal`, let's talk of the `ContextInternal#executeFromIO(ContextTask)`
-method. The `executeFromIO` method needs to be used when our server invokes application code, usually an handler
-provided by the application before starting the server:
-
-- listen handler
-- request handler
-- close handler
-- etc...
-
-When the context task is called, `executeFromIO` ensures that the current thread will be associated with
-the execution context. Any uncaught exception thrown by this block will also be reported on the context, usually
-such exception is either logged or passed to the `Context#exceptionHandler`.
-
-We use `executeFromIO` to dispatch the result to the `listenHandler` to the application is aware of the bind result.
-
-Now let's finish our server with the `TimeServerHandler`, which is pretty much an adaptation of the Netty's
-original http://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[`TimeServerHandler`]:
+Now let's have a look at the bind operation, again it's very and does not differ much from the original
+example:
 
 [source,java]
 ----
-{@link org.vietj.vertx.nettyserver.impl.TimeServerHandler}
+{@link org.vietj.vertx.nettyserver.impl.TimeServerImpl#bind}
 ----
+<1> use executeFromIO to dispatch to the application
+<2> call the listen handler either with a success or a failure
 
-Again here, we notice the usage of `executeFromIO` when a TIME request happens, the future to be completed is
-passed to the `requestHandler`.
+The most important part is that use `executeFromIO` to dispatch the result to the `listenHandler` in order
+to make the application aware of the bind result.
 
-=== The TIME client
+=== The server handler
 
-The original client example can be found http://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-10[here].
+Now let's finish our server with the `TimeServerHandler`, which is an adaptation of the Netty's
+original https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-8[`TimeServerHandler`]:
 
-The Vert.x timer client exposes a very simple API:
+[source,java]
+----
+{@link org.vietj.vertx.nettyserver.impl.TimeServerHandler#channelActive}
+----
+<1> create a new blank future that will be resolved by the `requestHandler`
+<2> let the context dispatch to the `requestHandler` with `executeFromIO`
+<3> the future handler is called when the `requestHandler` implementation completes the future
+<4> write the current TIME to the channel and close it after
+<5> the application failed we simply close the socket
+
+Again here,  `executeFromIO` is used when a TIME request event happens, the future to be completed is
+passed to the `requestHandler`. When this future is completed, the handler will either write the
+time result to the channel or close it.
+
+=== The client
+
+The original client example can be found https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-10[here].
+
+The Vert.x time client exposes a simple API:
 
 - a static method for creating a `TimeClient`
 - the client `getTime` method for retrieving a time value from a server
@@ -109,14 +187,30 @@ The TIME client is straightforward to use:
 {@link org.vietj.vertx.nettyclient.TimeClientExample#main}
 ----
 
-Let's study now how this client can be implemented integrating the existing Netty implementation with Vert.x:
+Let's study now the client implementation.
+
+=== The client bootstrap
+
+First let's have a look at the `Bootstrap` creation and configuration
 
 [source,java]
 ----
-{@link org.vietj.vertx.nettyclient.impl.TimeClientImpl}
+{@link org.vietj.vertx.nettyclient.impl.TimeClientImpl#createBootstrap}
 ----
+<1> `ContextInternal` returns the event loop to use as child group
+<2> create and configure the Netty's `Bootstrap`
+<3> configure the channel with the `TimeServerHandler` initialized with the server `resultHandler`
+
+The creation of the `Bootstrap` is quite straightforward and is very similar to the original version.
+The main difference is that we reuse the event-loop provided by the Verticle. This ensures that our client
+reuses the same event-loop than our verticle.
 
 Like in the server example we use the `ContextInternal` to obtain Netty's `EventLoop` to set on the `Bootstrap`.
+
+Notice that the `TimeServerHandler` is initialized with the client `resultHandler`, this handler will be
+called with the TIME request result.
+
+=== The client connect
 
 The bootstrap setup is very similar to the original example, in case of a failure the application callback
 uses again `executeFromIO` for the same reason thatn before.
@@ -125,5 +219,30 @@ The `TimeClientHandler` integration uses also `executeFromIO` for calling back t
 
 [source,java]
 ----
-{@link org.vietj.vertx.nettyclient.impl.TimeClientHandler}
+{@link org.vietj.vertx.nettyclient.impl.TimeClientImpl#connect}
 ----
+<1> connect to the server
+<2> upon connect error we call the result handler with a failure
+<3> use `executeFromIO` to dispatch the connect failure to the application
+
+We only care of propagating a connect failure to the application, when the bootstrap connects
+successfully, the `TimeServerHandler` will handle the network response to the application.
+
+When a connect failure happens, like in the server implementation, `executeFromIO` is used to dispatch the
+failure to the `resultHandler` in order to make the application aware of the connect error.
+
+=== The client handler
+
+Now let's finish our client with the `TimeServerHandler`, which is an adaptation of the Netty's
+original https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[`TimeClientHandler`]:
+
+[source,java]
+----
+{@link org.vietj.vertx.nettyclient.impl.TimeClientHandler#channelRead}
+----
+<1> decode the time response from the server
+<2> let the context dispatch the result to the `resultHandler` with `executeFromIO`
+<3> set the `resultHandler` to `null`
+<4> close the channel
+
+Again here, `executeFromIO` is used when a TIME response event happens to dispatch the result to the `resultHandler`
