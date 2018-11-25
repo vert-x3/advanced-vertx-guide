@@ -1,18 +1,21 @@
 == Using Netty TCP codecs
 
-Netty codecs are great for encapsulating and reusing network protocols encoding and decoding. For instance,
-the base Netty distribution provides a few codecs for popular protocols such as HTTP, Redis, Memcached or MQTT.
+In the previous section we have examined how Vert.x and Netty can share resources and the propagation of Netty events
+to a Vert.x application. In this section we will study the integration of existing Netty codecs.
 
-Vert.x provides client and server built on top of these codecs, e.g the Vert.x HTTP components reuses
+Netty codecs are great for encapsulating and reusing network protocols encoder and decoder. The base Netty
+distribution provides a few codecs for popular protocols such as HTTP, Redis, Memcached or MQTT.
+
+Client and server can be built on top of these codecs with Vert.x, e.g the Vert.x HTTP components reuses
 Netty's HTTP codec, akin for Vert.x the MQTT protocols.
 
-You can customize Vert.x TCP client and TCP server to reuse Netty codecs. In fact you can access the Netty
-context associated with a TCP `NetSocket` to customize the pipeline and read/write arbitrary messages.
+Vert.x TCP client/server can be customized to reuse Netty codecs. In fact the channel of a `NetSocket`
+can be used to customize the pipeline and read/write arbitrary messages.
 
-There is a lot of value in reusing in reusing Netty this way
+There is a lot of value in reusing `NetSocket` this way
 
-* extend the Vert.x ecosystem, your clients/servers will be fully integrated with the ecosystem, i.e you can
-  mix and match your middleware with existing Vert.x middleware
+* extend the Vert.x ecosystem, your clients/servers will be fully integrated with this ecosystem, i.e you can
+  mix and match your middleware with existing Vert.x middleware, filesystem, etc...
 * build on top of `NetSocket` features
 ** SSL/TLS
 ** Domain sockets
@@ -21,7 +24,7 @@ There is a lot of value in reusing in reusing Netty this way
 ** Metrics
 ** SNI handling
 
-In this chapter we will write a client, but you can reuse the same techniques for writing a server on top of
+In this chapter we will write a client, but the same techniques can be applied for writing a server on top of
 Netty's codec the same way.
 
 NOTE: everything achieved in this chapter can be also achieved using the techniques shown in the
@@ -34,7 +37,7 @@ Memcached binary codec.
 
 Memcached is a popular free and open source, high-performance, distributed memory object caching system.
 
-There are two version of the protocol, text and binary. In this section we will build a client for the
+There are two versions of the protocol, text and binary. In this section we will build a client for the
 binary protocol described in this https://github.com/memcached/memcached/wiki/BinaryProtocolRevamped[document].
 
 The client is very straightforward to use:
