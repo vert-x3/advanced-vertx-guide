@@ -17,7 +17,9 @@ You want to read this guide when you want to
 - integrate Vert.x with other libraries
 - perform networking with Netty and Vert.x
 
-Some of the internal Vert.x APIs are exposed in this guide and you should keep in mind that these APIs are subject to
+This is a live guide and you can contribute, just open a PR or an issue in the https://github.com/vietj/advanced-vertx-guide[repo].
+
+WARNING: Some of the internal Vert.x APIs are exposed in this guide and you should keep in mind that these APIs are subject to
 be changed when it is needed.
 
 include::Demystifying_the_event_loop.adoc[]
