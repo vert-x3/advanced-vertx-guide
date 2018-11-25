@@ -1,0 +1,1 @@
+Current context is io.vertx.core.impl.EventLoopContext@3fcd88a9
