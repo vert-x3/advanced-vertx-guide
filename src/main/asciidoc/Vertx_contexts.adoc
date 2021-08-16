@@ -263,7 +263,7 @@ default void emit(E event, Handler<E> eventHandler) {
 In most situations, the `emit` method is the way to go to have an application process an event. The main purpose of `dispatch`
 and `execute` methods is to give more control to the code to achieve very specific things.
 
-=== Context aware fuitures
+=== Context aware futures
 
 Until Vert.x 4, `Future` were statically created object with no specific relationship to a context. Vert.x 4 provides a future
 based API which need to respect the same semantics as Vert.x 3: any callback on a future should predictably run on the same context.
