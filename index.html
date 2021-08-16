@@ -696,9 +696,9 @@ table.tableblock.grid-all > tbody > tr { border-bottom: 1px solid #d8d8d8; }
 <li><a href="#_event-loop-context">Event-loop context</a></li>
 <li><a href="#_worker-context">Worker context</a></li>
 <li><a href="#_context-exception-handler">Context exception handler</a></li>
-<li><a href="#_contexts-and-tracing">Contexts and tracing</a></li>
 <li><a href="#_dispatching-events-on-a-context">Dispatching events on a context</a></li>
 <li><a href="#_context-aware-futures">Context aware futures</a></li>
+<li><a href="#_contexts-and-tracing">Contexts and tracing</a></li>
 <li><a href="#_close-hooks">Close hooks</a></li>
 </ul>
 </li>
@@ -1003,62 +1003,6 @@ sequentially - one after the other - but different actions may be executed on di
 </div>
 </div>
 <div class="sect2">
-<h3 id="_contexts-and-tracing">Contexts and tracing</h3>
-<div class="paragraph">
-<p>Since Vert.x 4, Vert.x integrates with popular distributing tracing systems.</p>
-</div>
-<div class="paragraph">
-<p>Tracing libraries usually rely on <a href="https://en.wikipedia.org/wiki/Thread-local_storage">thread local storage</a> to
-propagate tracing data, e.g a trace received when processing an HTTP request should be propagated throughout the
-HTTP client.</p>
-</div>
-<div class="paragraph">
-<p>Vert.x integrates tracing in a similar fashion but relies on contexts instead of thread local. Contexts are indeed
-propagated by Vert.x APIs and therefore offers a reliable storage for implementing tracing.</p>
-</div>
-<div class="paragraph">
-<p>Since all HTTP requests processed by a given server use the same context that created the HTTP server, the server context
-is <em>duplicated</em> for each HTTP request, to grant unicity to each HTTP request.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class MyVerticle extends AbstractVerticle {
- public void start() {
-   vertx.createHttpServer()
-     .requestHandler(request -&gt; {
-       // Executed in a duplicate verticle context
-     })
-     .listen(8080, "localhost");
- }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Duplication shares most of the characteristics of the original context and provides a specific local storage.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">vertx.createHttpServer()
- .requestHandler(request -&gt; {
-   JsonObject specificRequestData = getRequestData(request);
-   Context context = vertx.getOrCreateContext();
-   context.putLocal("my-stuff", specificRequestData);
-   processRequest(request);
- })
- .listen(8080, "localhost");</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Later the application can use it:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Context context = vertx.getOrCreateContext();
-JsonObject specificRequestData = context.getLocal("my-stuff");</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
 <h3 id="_dispatching-events-on-a-context">Dispatching events on a context</h3>
 <div class="paragraph">
 <p>The most common way to execute a piece of code is achieved with <code>runOnContext</code>. Although it is very suited for integrating
@@ -1198,6 +1142,62 @@ future.onSuccess(result -&gt; context.emit(result, handler));</code></pre>
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Future&lt;String&gt; succeeded = context.succeededFuture("OK usa");
 Future&lt;String&gt; failed = context.failedFuture("Oh sorry");</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_contexts-and-tracing">Contexts and tracing</h3>
+<div class="paragraph">
+<p>Since Vert.x 4, Vert.x integrates with popular distributing tracing systems.</p>
+</div>
+<div class="paragraph">
+<p>Tracing libraries usually rely on <a href="https://en.wikipedia.org/wiki/Thread-local_storage">thread local storage</a> to
+propagate tracing data, e.g a trace received when processing an HTTP request should be propagated throughout the
+HTTP client.</p>
+</div>
+<div class="paragraph">
+<p>Vert.x integrates tracing in a similar fashion but relies on contexts instead of thread local. Contexts are indeed
+propagated by Vert.x APIs and therefore offers a reliable storage for implementing tracing.</p>
+</div>
+<div class="paragraph">
+<p>Since all HTTP requests processed by a given server use the same context that created the HTTP server, the server context
+is <em>duplicated</em> for each HTTP request, to grant unicity to each HTTP request.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class MyVerticle extends AbstractVerticle {
+ public void start() {
+   vertx.createHttpServer()
+     .requestHandler(request -&gt; {
+       // Executed in a duplicate verticle context
+     })
+     .listen(8080, "localhost");
+ }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Duplication shares most of the characteristics of the original context and provides a specific local storage.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">vertx.createHttpServer()
+ .requestHandler(request -&gt; {
+   JsonObject specificRequestData = getRequestData(request);
+   Context context = vertx.getOrCreateContext();
+   context.putLocal("my-stuff", specificRequestData);
+   processRequest(request);
+ })
+ .listen(8080, "localhost");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Later the application can use it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Context context = vertx.getOrCreateContext();
+JsonObject specificRequestData = context.getLocal("my-stuff");</code></pre>
 </div>
 </div>
 </div>
@@ -2411,7 +2411,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-16 17:03:31 UTC
+Last updated 2021-08-16 17:04:14 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
