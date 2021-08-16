@@ -2,7 +2,7 @@
 
 This is an effort that aims to document more advanced/internal about Vert.x as a guide.
 
-[![Build Status](https://travis-ci.org/vietj/advanced-vertx-guide.svg?branch=master)](https://travis-ci.org/vietj/advanced-vertx-guide)
+[![Build Status](https://github.com/vietj/advanced-vertx-guide/workflows/CI/badge.svg?branch=master)](https://github.com/vietj/advanced-vertx-guide/actions)
 
 - [Latest version](http://www.julienviet.com/advanced-vertx-guide/)
 
