@@ -697,6 +697,8 @@ table.tableblock.grid-all > tbody > tr { border-bottom: 1px solid #d8d8d8; }
 <li><a href="#_worker-context">Worker context</a></li>
 <li><a href="#_context-exception-handler">Context exception handler</a></li>
 <li><a href="#_contexts-and-tracing">Contexts and tracing</a></li>
+<li><a href="#_dispatching-events-on-a-context">Dispatching events on a context</a></li>
+<li><a href="#_context-aware-fuitures">Context aware fuitures</a></li>
 <li><a href="#_close-hooks">Close hooks</a></li>
 </ul>
 </li>
@@ -1057,6 +1059,149 @@ JsonObject specificRequestData = context.getLocal("my-stuff");</code></pre>
 </div>
 </div>
 <div class="sect2">
+<h3 id="_dispatching-events-on-a-context">Dispatching events on a context</h3>
+<div class="paragraph">
+<p>The most common way to execute a piece of code is achieved with <code>runOnContext</code>. Although it is very suited for integrating
+non Vert.x systems with Vert.x, it is not the best fit to integrate code executing at the event-loop level (such as Netty)
+with application code.</p>
+</div>
+<div class="paragraph">
+<p>There are internal methods to achieve similar behaviors depending on the situation</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ContextInternal#dispatch(E, Handler&lt;E&gt;)</code></p>
+</li>
+<li>
+<p><code>ContextInternal#execute(E, Handler&lt;E&gt;)</code></p>
+</li>
+<li>
+<p><code>ContextInternal#emit(E, Handler&lt;E&gt;)</code></p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="_dispatch">Dispatch</h4>
+<div class="paragraph">
+<p><code>dispatch</code> assumes the caller thread is the context thread, it associates the current thread of execution with the context:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">assertNull(context, Vertx.currentContext());
+context.dispatch(event, evt -&gt; {
+ assertSame(context, Vertx.currentContext());
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The handler is also monitored by the blocked thread checker.</p>
+</div>
+<div class="paragraph">
+<p>Finally, any exception thrown by the handler will be reported to the context:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">context.exceptionHandler(err -&gt; {
+ // Should receive the exception thrown below
+});
+context.dispatch(event, evt -&gt; {
+ throw new RuntimeException();
+});</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_execute">Execute</h4>
+<div class="paragraph">
+<p><code>execute</code> executes a task on the context, when the caller thread is already a context thread, the task is executed directly
+with no trampolining, otherwise a task is scheduled for execution.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+no context associated is done
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_emit">Emit</h4>
+<div class="paragraph">
+<p><code>emit</code> is a combination of <code>execute</code> and <code>dispatch</code></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">default void emit(E event, Handler&lt;E&gt; eventHandler) {
+ execute(v -&gt; dispatch(argument, task));
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>emit</code> can be used from any thread to emit an event to a handler:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>from any thread, it behaves like <code>runOnContext</code></p>
+</li>
+<li>
+<p>from the context thread, it runs the event handler with the context thread local association, the block thread checker and reports failures on the context</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>In most situations, the <code>emit</code> method is the way to go to have an application process an event. The main purpose of <code>dispatch</code>
+and <code>execute</code> methods is to give more control to the code to achieve very specific things.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_context-aware-fuitures">Context aware fuitures</h3>
+<div class="paragraph">
+<p>Until Vert.x 4, <code>Future</code> were statically created object with no specific relationship to a context. Vert.x 4 provides a future
+based API which need to respect the same semantics as Vert.x 3: any callback on a future should predictably run on the same context.</p>
+</div>
+<div class="paragraph">
+<p>Vert.x 4 API creates futures bound to the caller context that run callbacks on the context:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Promise&lt;String&gt; promise = context.promise();
+
+Future&lt;String&gt; future = promise.future();
+
+future.onSuccess(handler);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Any callback is emitted on the context that created the promise, the code above is pretty much like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Promise&lt;String&gt; promise = Promise.promise();
+
+Future&lt;String&gt; future = promise.future();
+
+future.onSuccess(result -&gt; context.emit(result, handler));</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In addition, the API allows to create succeeded and failed futures:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Future&lt;String&gt; succeeded = context.succeededFuture("OK usa");
+Future&lt;String&gt; failed = context.failedFuture("Oh sorry");</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_close-hooks">Close hooks</h3>
 <div class="paragraph">
 <p>Close hooks is an internal feature of Vert.x useful for creating components that are notified when a <code>Verticle</code>
@@ -1251,7 +1396,7 @@ bootstrap.group(acceptorGroup, eventLoop);</code></pre>
 as network events, channel life cycle, etc&#8230;&#8203;</p>
 </div>
 <div class="paragraph">
-<p>The <code>ContextInternal#dispatch</code> methods is used to dispatch events to the application as it ensures:</p>
+<p>The <code>ContextInternal#emit</code> methods is used to emit events to the application as it ensures:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1271,45 +1416,40 @@ as network events, channel life cycle, etc&#8230;&#8203;</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Handler&lt;ChannelFuture&gt; bindHandler = fut -&gt; {
-  if (fut.isSuccess()) {
-    // Signal application with bind success
-  } else {
-    // Signal application with bind error
-  }
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Handler&lt;Channel&gt; bindHandler = ch -&gt; {
 };
 
-<i class="conum" data-value="1"></i><b>(1)</b>
+bootstrap.childHandler(new ChannelInitializer&lt;Channel&gt;() {
+  @Override
+  protected void initChannel(Channel ch) {
+    context.emit(ch, bindHandler);
+  }
+});
+
+Promise&lt;Void&gt; bindPromise = context.promise();
+
 bootstrap.bind(socketAddress).addListener(new ChannelFutureListener() {
   @Override
   public void operationComplete(ChannelFuture future) throws Exception {
-    <i class="conum" data-value="2"></i><b>(2)</b>
-    context.dispatch(future, bindHandler);
+    if (future.isSuccess()) {
+      // Signal application with bind success
+      bindPromise.complete();
+    } else {
+      // Signal application with bind error
+      bindPromise.fail(future.cause());
+    }
   }
-});</code></pre>
+});
+
+return bindPromise.future();</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Typical usage of <code>dispatch</code>:</p>
+<p>The typical usage of <code>emit</code> is to dispatch one or multiple events to the same handler, like an event handler.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>listen handler</p>
-</li>
-<li>
-<p>connect handler</p>
-</li>
-<li>
-<p>request handler</p>
-</li>
-<li>
-<p>close handler</p>
-</li>
-<li>
-<p>etc&#8230;&#8203;</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>When it comes to a future, the <code>ContextInternal#promise</code> method creates a promise that will behave with listeners like
+the <code>emit</code> method.</p>
 </div>
 </div>
 </div>
@@ -1330,7 +1470,7 @@ bootstrap.bind(socketAddress).addListener(new ChannelFutureListener() {
 <p>two methods: <code>listen</code> to bind a server and <code>close</code> to unbind</p>
 </li>
 <li>
-<p>the <code>requestHandler</code> for setting an handler for handling requests</p>
+<p>the <code>requestHandler</code> for setting a handler for handling requests</p>
 </li>
 </ul>
 </div>
@@ -1454,39 +1594,43 @@ example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">ChannelFuture bindFuture = bootstrap.bind(host, port);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Promise&lt;Void&gt; promise = context.promise(); <i class="conum" data-value="1"></i><b>(1)</b>
+
+ChannelFuture bindFuture = bootstrap.bind(host, port);
 bindFuture.addListener(new ChannelFutureListener() {
   @Override
   public void operationComplete(ChannelFuture future) {
-    context.dispatch(v -&gt; { <i class="conum" data-value="1"></i><b>(1)</b>
-
-      //
-      if (future.isSuccess()) {
-        channel = future.channel();
-        promise.complete();
-      } else {
-        promise.fail(future.cause());
-      }
-    });
+    <i class="conum" data-value="2"></i><b>(2)</b>
+    if (future.isSuccess()) {
+      channel = future.channel();
+      promise.complete();
+    } else {
+      promise.fail(future.cause());
+    }
   }
-});</code></pre>
+});
+
+return promise.future(); <i class="conum" data-value="3"></i><b>(3)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>use <code>dispatch</code> to dispatch to the application</td>
+<td>create a promise bound to the server context</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>call the listen handler either with a success or a failure</td>
+<td>complete or succeed the result promise</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>return the future result</td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>The most important part is the use of the <code>dispatch</code> method to dispatch the result to the <code>listenHandler</code> in order
-to make the application aware of the bind result.</p>
+<p>The most important part is the creation of the context promise to make the application aware of the bind result.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1499,7 +1643,7 @@ original <a href="https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-8"><code
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Promise&lt;Long&gt; result = Promise.promise(); <i class="conum" data-value="1"></i><b>(1)</b>
 
-context.dispatch(result, requestHandler); <i class="conum" data-value="2"></i><b>(2)</b>
+context.emit(result, requestHandler); <i class="conum" data-value="2"></i><b>(2)</b>
 
 result.future().onComplete(ar -&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
   if (ar.succeeded()) {  <i class="conum" data-value="4"></i><b>(4)</b>
@@ -1521,7 +1665,7 @@ result.future().onComplete(ar -&gt; { <i class="conum" data-value="3"></i><b>(3)
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>let the context dispatch to the <code>requestHandler</code> with <code>dispatch</code></td>
+<td>let the context emit the event to the <code>requestHandler</code> with <code>emit</code></td>
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
@@ -1538,7 +1682,7 @@ result.future().onComplete(ar -&gt; { <i class="conum" data-value="3"></i><b>(3)
 </table>
 </div>
 <div class="paragraph">
-<p>Again here, <code>dispatch</code> is used when a TIME request event happens, the promise to be completed is
+<p><code>emit</code> is used when a TIME request event happens, the promise to be completed is
 passed to the <code>requestHandler</code>. When this promise is completed, the handler will either write the
 time result to the channel or close it.</p>
 </div>
@@ -1579,7 +1723,7 @@ time result to the channel or close it.</p>
    * @param host the server host name
    * @param resultHandler the asynchronous time result
    */
-  void getTime(int port, String host, Handler&lt;AsyncResult&lt;Long&gt;&gt; resultHandler);
+  Future&lt;Long&gt; getTime(int port, String host);
 
 }</code></pre>
 </div>
@@ -1595,7 +1739,7 @@ time result to the channel or close it.</p>
 TimeClient server = TimeClient.create(vertx);
 
 // Fetch the time
-server.getTime(8037, "localhost", ar -&gt; {
+server.getTime(8037, "localhost").onComplete(ar -&gt; {
   if (ar.succeeded()) {
     System.out.println("Time is " + new Date(ar.result()));
   } else {
@@ -1624,9 +1768,9 @@ bootstrap.channel(NioSocketChannel.class);
 bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
 bootstrap.handler(new ChannelInitializer&lt;Channel&gt;() {
   @Override
-  protected void initChannel(Channel ch) throws Exception {
-    ChannelPipeline pipeline = ch.pipeline(); <i class="conum" data-value="4"></i><b>(4)</b>
-    pipeline.addLast(new TimeClientHandler(context, resultHandler));
+  protected void initChannel(Channel ch) {
+    ChannelPipeline pipeline = ch.pipeline(); <i class="conum" data-value="3"></i><b>(3)</b>
+    pipeline.addLast(new TimeClientHandler(result));
   }
 });
 
@@ -1666,10 +1810,7 @@ called with the TIME request result.</p>
 <h3 id="_the-client-connect">The client connect</h3>
 <div class="paragraph">
 <p>The bootstrap setup is very similar to the original example, in case of a failure the application callback
-uses again <code>dispatch</code> for the same reason thatn before.</p>
-</div>
-<div class="paragraph">
-<p>The <code>TimeClientHandler</code> integration uses also <code>dispatch</code> for calling back the application:</p>
+uses a promise that holds the overall result.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1677,10 +1818,8 @@ uses again <code>dispatch</code> for the same reason thatn before.</p>
 connectFuture.addListener(new ChannelFutureListener() {
   @Override
   public void operationComplete(ChannelFuture future) throws Exception {
-    if (!future.isSuccess()) { <i class="conum" data-value="2"></i><b>(2)</b>
-      context.dispatch(v -&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
-        resultHandler.handle(io.vertx.core.Future.failedFuture(future.cause()));
-      });
+    if (!future.isSuccess()) {
+      result.fail(future.cause()); // 2
     }
   }
 });</code></pre>
@@ -1694,11 +1833,7 @@ connectFuture.addListener(new ChannelFutureListener() {
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>upon connect error we call the result handler with a failure</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>use <code>executeFromIO</code> to dispatch the connect failure to the application</td>
+<td>upon connect error we fail the promise</td>
 </tr>
 </table>
 </div>
@@ -1706,15 +1841,11 @@ connectFuture.addListener(new ChannelFutureListener() {
 <p>We only care of propagating a connect failure to the application, when the bootstrap connects
 successfully, the <code>TimeServerHandler</code> will handle the network response to the application.</p>
 </div>
-<div class="paragraph">
-<p>When a connect failure happens, like in the server implementation, <code>dispatch</code> is used to dispatch the
-failure to the <code>resultHandler</code> in order to make the application aware of the connect error.</p>
-</div>
 </div>
 <div class="sect2">
 <h3 id="_the-client-handler">The client handler</h3>
 <div class="paragraph">
-<p>Now let&#8217;s finish our client with the <code>TimeServerHandler</code>, which is an adaptation of the Netty&#8217;s
+<p>Now let&#8217;s complete our client with the <code>TimeServerHandler</code>, which is an adaptation of the Netty&#8217;s
 original <a href="https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9"><code>TimeClientHandler</code></a>:</p>
 </div>
 <div class="listingblock">
@@ -1723,8 +1854,8 @@ original <a href="https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9"><code
 long currentTimeMillis;
 try {
   currentTimeMillis = (m.readUnsignedInt() - 2208988800L) * 1000L; <i class="conum" data-value="1"></i><b>(1)</b>
-  context.dispatch(Future.succeededFuture(currentTimeMillis), resultHandler); <i class="conum" data-value="2"></i><b>(2)</b>
-  resultHandler = null; <i class="conum" data-value="3"></i><b>(3)</b>
+  resultPromise.complete(currentTimeMillis);  <i class="conum" data-value="2"></i><b>(2)</b>
+  resultPromise = null; <i class="conum" data-value="3"></i><b>(3)</b>
   ctx.close(); <i class="conum" data-value="4"></i><b>(4)</b>
 } finally {
   m.release();
@@ -1739,11 +1870,11 @@ try {
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>let the context dispatch the result to the <code>resultHandler</code> with <code>dispatch</code></td>
+<td>complete the <code>resultPromise</code> with the response</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>set the <code>resultHandler</code> to <code>null</code></td>
+<td>set the <code>resultPromise</code> to <code>null</code></td>
 </tr>
 <tr>
 <td><i class="conum" data-value="4"></i><b>4</b></td>
@@ -1752,7 +1883,7 @@ try {
 </table>
 </div>
 <div class="paragraph">
-<p>Again here, <code>dispatch</code> is used when a TIME response event happens to dispatch the result to the <code>resultHandler</code></p>
+<p>Again here, we complete the <code>resultPromise</code> when a TIME response event happens.</p>
 </div>
 </div>
 </div>
@@ -2121,10 +2252,10 @@ a memory leak will happen</p>
 
 try {
   // Get the handler that will process the response
-  Handler&lt;AsyncResult&lt;FullBinaryMemcacheResponse&gt;&gt; handler = inflight.poll();
+  Promise&lt;FullBinaryMemcacheResponse&gt; handler = inflight.poll();
 
   // Handle the message
-  handler.handle(Future.succeededFuture(response));
+  handler.complete(response);
 } finally {
   // Release the referenced counted message
   response.release();
@@ -2280,7 +2411,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-16 14:30:05 UTC
+Last updated 2021-08-16 16:59:19 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
