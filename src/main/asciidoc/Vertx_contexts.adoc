@@ -168,7 +168,7 @@ There are internal methods to achieve similar behaviors depending on the situati
 
 [source,java]
 ----
-assertNull(context, Vertx.currentContext());
+assertNull(Vertx.currentContext());
 context.dispatch(event, evt -> {
   assertSame(context, Vertx.currentContext());
 });
