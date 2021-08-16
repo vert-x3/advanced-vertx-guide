@@ -37,20 +37,24 @@ public class TimeServerImpl implements TimeServer {
   }
 
   @Override
-  public void listen(int port, String host, Handler<AsyncResult<Void>> listenHandler) {
+  public Future<Void> listen(int port, String host) {
+    ContextInternal ctx = vertx.getOrCreateContext();
+
     if (requestHandler == null) {
-      throw new IllegalStateException("No request handler set");
+      return ctx.failedFuture(new IllegalStateException("No request handler set"));
     }
     if (bootstrap != null) {
-      throw new IllegalStateException("Already started");
+      return ctx.failedFuture(new IllegalStateException("Already started"));
     }
 
     // Get the current context as a Vert.x internal context
-    context = vertx.getOrCreateContext();
+    context = ctx;
     createBootstrap();
 
     // Bind the server socket
-    bind(host, port, listenHandler);
+    Promise<Void> promise = context.promise();
+    bind(host, port, promise);
+    return promise.future();
   }
 
   private void createBootstrap() {
@@ -69,7 +73,7 @@ public class TimeServerImpl implements TimeServer {
     });
   }
 
-  private void bind(String host, int port, Handler<AsyncResult<Void>> listenHandler) {
+  private void bind(String host, int port, Promise<Void> promise) {
     ChannelFuture bindFuture = bootstrap.bind(host, port);
     bindFuture.addListener(new ChannelFutureListener() {
       @Override
@@ -79,9 +83,9 @@ public class TimeServerImpl implements TimeServer {
           //
           if (future.isSuccess()) {
             channel = future.channel();
-            listenHandler.handle(Future.succeededFuture(null));
+            promise.complete();
           } else {
-            listenHandler.handle(Future.failedFuture(future.cause()));
+            promise.fail(future.cause());
           }
         });
       }

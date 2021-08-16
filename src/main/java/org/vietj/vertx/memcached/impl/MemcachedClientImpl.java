@@ -8,9 +8,13 @@ import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.ContextInternal;
+import io.vertx.core.impl.VertxInternal;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetClientOptions;
+import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.impl.NetSocketInternal;
 import org.vietj.vertx.memcached.MemcachedClient;
 import org.vietj.vertx.memcached.MemcachedError;
@@ -21,35 +25,30 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class MemcachedClientImpl implements MemcachedClient {
 
-  public static void connect(Vertx vertx, int port, String host, NetClientOptions options, Handler<AsyncResult<MemcachedClient>> completionHandler) {
+  public static Future<MemcachedClient> connect(Vertx vertx, int port, String host, NetClientOptions options) {
 
     // Create the NetClient
-    NetClient client = options != null ? vertx.createNetClient(options) : vertx.createNetClient();
+    NetClient tcpClient = options != null ? vertx.createNetClient(options) : vertx.createNetClient();
 
     // Connect to the memcached instance
-    client.connect(port, host, ar -> {
-      if (ar.succeeded()) {
-        // Get the socket
-        NetSocketInternal so = (NetSocketInternal) ar.result();
+    Future<NetSocket> connect = tcpClient.connect(port, host);
+    return connect.map(so -> {
+      // Create the client
+      MemcachedClientImpl memcachedClient = new MemcachedClientImpl((VertxInternal) vertx, (NetSocketInternal) so);
 
-        // Create the client
-        MemcachedClientImpl memcachedClient = new MemcachedClientImpl(so);
+      // Initialize the client: configure the pipeline and set the handlers
+      memcachedClient.init();
 
-        // Initialize the client: configure the pipeline and set the handlers
-        memcachedClient.init();
-
-        // Return the memcached instance to the client
-        completionHandler.handle(Future.succeededFuture(memcachedClient));
-      } else {
-        completionHandler.handle(Future.failedFuture(ar.cause()));
-      }
+      return memcachedClient;
     });
   }
 
+  private final VertxInternal vertx;
   private final NetSocketInternal so;
   private final Deque<Handler<AsyncResult<FullBinaryMemcacheResponse>>> inflight = new ConcurrentLinkedDeque<>();
 
-  private MemcachedClientImpl(NetSocketInternal so) {
+  private MemcachedClientImpl(VertxInternal vertx, NetSocketInternal so) {
+    this.vertx = vertx;
     this.so = so;
   }
 
@@ -72,20 +71,18 @@ public class MemcachedClientImpl implements MemcachedClient {
     so.messageHandler(this::processResponse);
   }
 
-  private void writeRequest(BinaryMemcacheRequest request, Handler<AsyncResult<FullBinaryMemcacheResponse>> completionHandler) {
+  private Future<FullBinaryMemcacheResponse> writeRequest(BinaryMemcacheRequest request) {
 
-    // Write the message, the memcached codec will encode the request
-    // to a buffer and it will be sent
-    so.writeMessage(request, ar -> {
-      if (ar.succeeded()) {
-        // The message has been encoded succesfully and sent
-        // we add the handler to the inflight queue
-        inflight.add(completionHandler);
-      } else {
-        // The message could not be encoded or sent
-        // we signal an error
-        completionHandler.handle(Future.failedFuture(ar.cause()));
-      }
+    // Write the message, the memcached codec will encode the request to a buffer
+    return so.writeMessage(request).compose(v -> {
+
+      // The message has been encoded successfully and sent
+      // Create a response promise and add it to the inflight queue, so it can be resolved by the server ack
+      Promise<FullBinaryMemcacheResponse> promise = vertx.promise();
+      inflight.add(promise);
+
+      //
+      return promise.future();
     });
   }
 
@@ -111,7 +108,7 @@ public class MemcachedClientImpl implements MemcachedClient {
   }
 
   @Override
-  public void get(String key, Handler<AsyncResult<@Nullable String>> completionHandler) {
+  public Future<@Nullable String> get(String key) {
 
     // Create the key buffer
     ByteBuf keyBuf = Unpooled.copiedBuffer(key, StandardCharsets.UTF_8);
@@ -122,42 +119,30 @@ public class MemcachedClientImpl implements MemcachedClient {
     // Set the memcached operation opcode to perform a GET
     request.setOpcode(BinaryMemcacheOpcodes.GET);
 
-    // Execute the request
-    writeRequest(request, ar -> {
-      if (ar.succeeded()) {
-        // Get the response
-        processGetResponse(ar.result(), completionHandler);
-      } else {
-        // Network error
-        completionHandler.handle(Future.failedFuture(ar.cause()));
-      }
-    });
+    // Execute the request and process the response
+    return writeRequest(request).map(response -> processGetResponse(response));
   }
 
-  private void processGetResponse(FullBinaryMemcacheResponse response, Handler<AsyncResult<@Nullable String>> completionHandler) {
+  private String processGetResponse(FullBinaryMemcacheResponse response) {
     short status = response.status();
     switch (status) {
 
       case 0:
         // Succesfull get
-        String value = response.content().toString(StandardCharsets.UTF_8);
-        completionHandler.handle(Future.succeededFuture(value));
-        break;
+        return response.content().toString(StandardCharsets.UTF_8);
 
       case 1:
         // Empty response -> null
-        completionHandler.handle(Future.succeededFuture());
-        break;
+        return null;
 
       default:
         // Memcached error
-        completionHandler.handle(Future.failedFuture(new MemcachedError(status)));
-        break;
+        throw new MemcachedError(status);
     }
   }
 
   @Override
-  public void set(String key, String value, Handler<AsyncResult<Void>> completionHandler) {
+  public Future<Void> set(String key, String value) {
 
     // Create the key buffer
     ByteBuf keyBuf = Unpooled.copiedBuffer(key, StandardCharsets.UTF_8);
@@ -174,25 +159,18 @@ public class MemcachedClientImpl implements MemcachedClient {
     // Set the memcached operation opcode to perform a SET
     request.setOpcode(BinaryMemcacheOpcodes.SET);
 
-    // Execute the request
-    writeRequest(request, ar -> {
-      if (ar.succeeded()) {
-        processSetResponse(ar.result(), completionHandler);
-      } else {
-        // Network error
-        completionHandler.handle(Future.failedFuture(ar.cause()));
-      }
-    });
+    // Execute the request and process the response
+    return writeRequest(request).map(response -> processSetResponse(response));
   }
 
-  private void processSetResponse(FullBinaryMemcacheResponse response, Handler<AsyncResult<Void>> completionHandler) {
+  private Void processSetResponse(FullBinaryMemcacheResponse response) {
     short status = response.status();
     if (status == 0) {
       // Succesfull get
-      completionHandler.handle(Future.succeededFuture());
+      return null;
     } else {
       // Memcached error
-      completionHandler.handle(Future.failedFuture(new MemcachedError(status)));
+      throw new MemcachedError(status);
     }
   }
 }

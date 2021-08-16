@@ -14,38 +14,19 @@ public class MemcachedExample {
 
     Vertx vertx = Vertx.vertx();
 
-    // Create the memcached client
-    MemcachedClient.connect(vertx, 11211, "localhost", ar1 -> {
-      if (ar1.succeeded()) {
+    MemcachedClient.connect(vertx, 11211, "localhost")
+        .compose(client -> {
+          System.out.println("connected");
 
-        // Connected to memcached
-        System.out.println("connected");
-
-        // Get the client
-        MemcachedClient client = ar1.result();
-
-        // Put a value
-        client.set("foo", "bar", ar2 -> {
-          if (ar2.succeeded()) {
-
+          // Put a value
+          return client.set("foo", "bar").compose(v -> {
             System.out.println("Put successful");
 
             // Now retrieve the same value
-            client.get("foo", ar3 -> {
-              if (ar3.succeeded()) {
-                String res = ar3.result();
-                System.out.println("Get successful " + res + "");
-              } else {
-                ar3.cause().printStackTrace();
-              }
-            });
-          } else {
-            ar2.cause().printStackTrace();
-          }
-        });
-      } else {
-        ar1.cause().printStackTrace();
-      }
-    });
+            return client.get("foo");
+          });
+        }).onSuccess(res -> {
+          System.out.println("Get successful " + res + "");
+        }).onFailure(err -> err.printStackTrace());
   }
 }

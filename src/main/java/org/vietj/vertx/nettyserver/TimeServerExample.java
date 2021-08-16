@@ -16,12 +16,8 @@ public class TimeServerExample {
     });
 
     // Start the server
-    server.listen(8037, "0.0.0.0", ar -> {
-      if (ar.succeeded()) {
-        System.out.println("Server started");
-      } else {
-        ar.cause().printStackTrace();
-      }
-    });
+    server.listen(8037, "0.0.0.0")
+        .onSuccess(v -> System.out.println("Server started"))
+        .onFailure(err -> err.printStackTrace());
   }
 }

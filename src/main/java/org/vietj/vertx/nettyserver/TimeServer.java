@@ -1,6 +1,7 @@
 package org.vietj.vertx.nettyserver;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -29,9 +30,9 @@ public interface TimeServer {
    *
    * @param port the server port
    * @param host the server host
-   * @param listenHandler the listen result handler
+   * @return the future completed when the socket is bound
    */
-  void listen(int port, String host, Handler<AsyncResult<Void>> listenHandler);
+  Future<Void> listen(int port, String host);
 
   /**
    * Close the time server.
