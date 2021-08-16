@@ -1,6 +1,7 @@
 package org.vietj.vertx.nettyclient;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import org.vietj.vertx.nettyclient.impl.TimeClientImpl;
@@ -21,6 +22,6 @@ public interface TimeClient {
    * @param host the server host name
    * @param resultHandler the asynchronous time result
    */
-  void getTime(int port, String host, Handler<AsyncResult<Long>> resultHandler);
+  Future<Long> getTime(int port, String host);
 
 }

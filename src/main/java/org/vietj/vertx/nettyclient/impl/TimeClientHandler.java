@@ -6,14 +6,15 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.impl.ContextInternal;
 
 public class TimeClientHandler extends ChannelInboundHandlerAdapter {
 
   private final ContextInternal context;
-  private Handler<AsyncResult<Long>> resultHandler;
+  private Promise<Long> resultHandler;
 
-  public TimeClientHandler(ContextInternal context, Handler<AsyncResult<Long>> resultHandler) {
+  public TimeClientHandler(ContextInternal context, Promise<Long> resultHandler) {
     this.context = context;
     this.resultHandler = resultHandler;
   }

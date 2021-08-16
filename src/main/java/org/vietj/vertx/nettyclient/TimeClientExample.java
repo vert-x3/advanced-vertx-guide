@@ -14,7 +14,7 @@ public class TimeClientExample {
     TimeClient server = TimeClient.create(vertx);
 
     // Fetch the time
-    server.getTime(8037, "localhost", ar -> {
+    server.getTime(8037, "localhost").onComplete(ar -> {
       if (ar.succeeded()) {
         System.out.println("Time is " + new Date(ar.result()));
       } else {
