@@ -1,2 +1,0 @@
-Starting timer on Thread[vert.x-worker-thread-0,5,main]
-Timer fired Thread[vert.x-worker-thread-1,5,main] after 1007 ms

@@ -687,12 +687,17 @@ table.tableblock.grid-all > tbody > tr { border-bottom: 1px solid #d8d8d8; }
 <div id="toc" class="toc">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#_demystifying-the-event-loop">Demystifying the Event Loop</a>
+<li><a href="#_contexts-in-vert-x">Contexts in Vert.x</a>
 <ul class="sectlevel2">
-<li><a href="#_the-golden-rule">The golden rule</a></li>
-<li><a href="#_the-context">The context</a></li>
+<li><a href="#_verticles">Verticles</a></li>
+<li><a href="#_propagation-of-contexts">Propagation of contexts</a></li>
+<li><a href="#_adhoc-contexts">Adhoc contexts</a></li>
 <li><a href="#_dealing-with-contexts">Dealing with contexts</a></li>
-<li><a href="#_embedding-vert-x">Embedding Vert.x</a></li>
+<li><a href="#_event-loop-context">Event-loop context</a></li>
+<li><a href="#_worker-context">Worker context</a></li>
+<li><a href="#_context-exception-handler">Context exception handler</a></li>
+<li><a href="#_contexts-and-tracing">Contexts and tracing</a></li>
+<li><a href="#_context-internals">Context internals</a></li>
 </ul>
 </li>
 <li><a href="#integrating-netty">Integrating Netty</a>
@@ -790,155 +795,168 @@ be changed when it is needed.
 </div>
 </div>
 <div class="sect1">
-<h2 id="_demystifying-the-event-loop">Demystifying the Event Loop</h2>
+<h2 id="_contexts-in-vert-x">Contexts in Vert.x</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The event loop plays an important role in Vert.x for writing highly scalable and performant network applications.</p>
+<p>The <code>io.vertx.core.Context</code> interface is an essential component of Vert.x.</p>
 </div>
 <div class="paragraph">
-<p>The event loop is inherited from the Netty library on which Vert.x is based.</p>
+<p>At a high level contexts can be thought of as controlling the execution of how events (or tasks created by handlers) are executed by the application.</p>
 </div>
 <div class="paragraph">
-<p>We often use the expression <em>running on the event loop</em>, it has a very specific meaning: it means that the
-current Thread is an event loop thread. This article provides an overview of the Vert.x event loop and the concepts
-related to it.</p>
+<p>Most events are dispatched through contexts, when the application consumes an event there is most likely a context associated with
+the dispatch of the event.</p>
 </div>
 <div class="sect2">
-<h3 id="_the-golden-rule">The golden rule</h3>
+<h3 id="_verticles">Verticles</h3>
 <div class="paragraph">
-<p>When using Vert.x there is one Vert.x golden rule to respect:</p>
+<p>When an instance of a verticle is deployed, Vert.x creates and associates a context with this instance. You can access
+this context in your verticle using the <code>context</code> field of <code>AbstractVerticle</code>:</p>
 </div>
-<div class="quoteblock">
-<blockquote>
-Never block the event loop!
-</blockquote>
-<div class="attribution">
-&#8212; Tim Fox
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class MyVerticle extends AbstractVerticle {
+ public void start() {
+   JsonObject config = context.config();
+ }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The code executed on the event loop should never block the event loop, for instance:</p>
+<p>When <code>MyVerticle</code> is deployed, Vert.x emits a <em>start</em> event, the <code>start</code> method is called by a thread of the Verticle context:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>using a blocking method directly or, for instance, reading a file with the <code>java.io.FileInputStream</code> api
-or a JDBC connection.</p>
+<p>by default the context is always an event-loop context, the caller thread is an event-loop</p>
 </li>
 <li>
-<p>doing a long and CPU intensive task</p>
+<p>when the verticle is deployed as a worker the caller thread is one of the worker pool of Vert.x</p>
 </li>
 </ul>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_propagation-of-contexts">Propagation of contexts</h3>
 <div class="paragraph">
-<p>When the event loop is blocked:</p>
+<p>Most Vert.x APIs are aware of contexts.</p>
+</div>
+<div class="paragraph">
+<p>Asynchronous operations executed within a context will call back the application with the same context.</p>
+</div>
+<div class="paragraph">
+<p>Likewise, event handlers are also dispatched on the same context.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.setTimer(1, id -&gt; {
-  // Blocking the Vert.x event loop
-  try {
-    Thread.sleep(7000);
-  } catch (InterruptedException e) {
-    e.printStackTrace();
-  }
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Vert.x will detect it and log a warn:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Jan 31, 2016 9:10:23 PM io.vertx.core.impl.BlockedThreadChecker
-WARNING: Thread Thread[vert.x-eventloop-thread-0,5,main] has been blocked for 2880 ms, time limit is 2000
-Jan 31, 2016 9:10:24 PM io.vertx.core.impl.BlockedThreadChecker
-WARNING: Thread Thread[vert.x-eventloop-thread-0,5,main] has been blocked for 3881 ms, time limit is 2000
-Jan 31, 2016 9:10:25 PM io.vertx.core.impl.BlockedThreadChecker
-WARNING: Thread Thread[vert.x-eventloop-thread-0,5,main] has been blocked for 4883 ms, time limit is 2000
-Jan 31, 2016 9:10:26 PM io.vertx.core.impl.BlockedThreadChecker
-WARNING: Thread Thread[vert.x-eventloop-thread-0,5,main] has been blocked for 5885 ms, time limit is 2000
-io.vertx.core.VertxException: Thread blocked
-	at java.lang.Thread.sleep(Native Method)
-	at org.vietj.vertx.eventloop.BlockingEventLoop.lambda$main$30(BlockingEventLoop.java:16)
-	at org.vietj.vertx.eventloop.BlockingEventLoop$$Lambda$3/232824863.handle(Unknown Source)
-	at io.vertx.core.impl.VertxImpl$InternalTimerHandler.handle(VertxImpl.java:738)
-	at io.vertx.core.impl.VertxImpl$InternalTimerHandler.handle(VertxImpl.java:709)
-	at io.vertx.core.impl.ContextImpl.lambda$wrapTask$16(ContextImpl.java:335)
-	at io.vertx.core.impl.ContextImpl$$Lambda$6/295964645.run(Unknown Source)
-	at io.netty.util.concurrent.SingleThreadEventExecutor.runAllTasks(SingleThreadEventExecutor.java:358)
-	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:357)
-	at io.netty.util.concurrent.SingleThreadEventExecutor$2.run(SingleThreadEventExecutor.java:112)
-	at java.lang.Thread.run(Thread.java:745)
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class MyVerticle extends AbstractVerticle {
+ public void start() {
+   Future&lt;HttpServer&gt; future = vertx.createHttpServer()
+     .requestHandler(request -&gt; {
+       // Executed in the verticle context
+     })
+     .listen(8080, "localhost");
 
-Jan 31, 2016 9:10:27 PM io.vertx.core.impl.BlockedThreadChecker
-WARNING: Thread Thread[vert.x-eventloop-thread-0,5,main] has been blocked for 6890 ms, time limit is 2000
-io.vertx.core.VertxException: Thread blocked
-	at java.lang.Thread.sleep(Native Method)
-	at org.vietj.vertx.eventloop.BlockingEventLoop.lambda$main$30(BlockingEventLoop.java:16)
-	at org.vietj.vertx.eventloop.BlockingEventLoop$$Lambda$3/232824863.handle(Unknown Source)
-	at io.vertx.core.impl.VertxImpl$InternalTimerHandler.handle(VertxImpl.java:738)
-	at io.vertx.core.impl.VertxImpl$InternalTimerHandler.handle(VertxImpl.java:709)
-	at io.vertx.core.impl.ContextImpl.lambda$wrapTask$16(ContextImpl.java:335)
-	at io.vertx.core.impl.ContextImpl$$Lambda$6/295964645.run(Unknown Source)
-	at io.netty.util.concurrent.SingleThreadEventExecutor.runAllTasks(SingleThreadEventExecutor.java:358)
-	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:357)
-	at io.netty.util.concurrent.SingleThreadEventExecutor$2.run(SingleThreadEventExecutor.java:112)
-	at java.lang.Thread.run(Thread.java:745)</code></pre>
+   future.onComplete(ar -&gt; {
+      // Executed in the verticle context
+   });
+ }
+}</code></pre>
 </div>
-</div>
-<div class="paragraph">
-<p>The event loop must not be blocked, because it will freeze the parts of the applications using that event loop, with
-severe consequences on the scalability and the throughput of the application.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_the-context">The context</h3>
+<h3 id="_adhoc-contexts">Adhoc contexts</h3>
 <div class="paragraph">
-<p>Beyond the event loop, Vert.x defines the notion of a <strong><em>context</em></strong>. At a high level, the context can be thought of as
-controlling the scope and order in which a set of handlers (or tasks created by handlers) are executed.</p>
+<p>Using Vert.x APIs without using Verticle is supported since Vert.x 3 and leads to the interesting question of
+which context is used. When a Vert.x API is called, Vert.x associates the current thread with an ad hoc context.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class Main {
+ public static void main(String[] args) {
+   WebClient client = WebClient.create(vertx);
+
+   for (int i = 0;i &lt; 4;i++) {
+     client
+       .get(8080, "myserver.mycompany.com", "/some-uri")
+       .send()
+       .onSuccess(ar -&gt; {
+        // All callbacks are on the same context
+       });
+   }
+ }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+this behavior differs from previous major versions, Vert.x 3 would create a different context for each HTTP request.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_dealing-with-contexts">Dealing with contexts</h3>
+<div class="paragraph">
+<p>Most application don&#8217;t need tight interactions with a context but sometimes it can be useful to access them, e.g
+your application uses another library that performs a callback on its own thread and you want to execute code
+in the original context.</p>
 </div>
 <div class="paragraph">
-<p>When the Vert.x API <em>consumes</em> callbacks (for instance setting an <code>HttpServer</code> request handler), it associates a callback handler
-with a context. This context is then used for scheduling the callbacks, when such context is needed:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>if the current thread is a Vert.x thread, it reuses the context associated with this thread: the context is propagated.</p>
-</li>
-<li>
-<p>otherwise a new context is created for this purpose.</p>
-</li>
-</ul>
+<p>Above we have seen a verticle can access its context through the <code>context</code> field but that implies to use a verticle
+and to have a reference on the verticle which might not always be handy.</p>
 </div>
 <div class="paragraph">
-<p>However there is one case where context propagation does not apply: deploying a Verticle creates a new context
-for this Verticle, according to the deployment options of the deployment. Therefore a Verticle is always associated
-with a context. Any handler registered within a verticle - whether it be an event bus consumer, HTTP server handler,
-or any other asynchronous operation - will be registered using the verticle’s context.</p>
+<p>You can get the current context with <code>getOrCreateContext()</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Context context = vertx.getOrCreateContext();</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>Vert.x provides three different types of contexts.</p>
+<p>You can also use the static method <code>Vertx.currentContext()</code>:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Event loop context</p>
-</li>
-<li>
-<p>Worker context</p>
-</li>
-<li>
-<p>Multi-threaded worker context</p>
-</li>
-</ul>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Context context = Vertx.currentContext();</code></pre>
 </div>
-<div class="sect3">
-<h4 id="_event-loop-context">Event loop context</h4>
+</div>
 <div class="paragraph">
-<p>An event loop context executes handlers on an event loop: handlers are executed directly on the IO threads, as
+<p>The later might return null if the current thread is not associated with a context, whereas the former will create
+one if needed and thus never returns null.</p>
+</div>
+<div class="paragraph">
+<p>After you obtained a context, you can use it to run code in this context:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public void integrateWithExternalSystem(Handler&lt;Event&gt; handler) {
+ // Capture the current context
+ Context context = vertx.getOrCreateContext();
+
+ // Run the event handler on the application context
+ externalSystem.onEvent(event -&gt; {
+   context.runOnContext(v -&gt; handler.handle(event));
+ });
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In practice, many Vert.x APIs and thirdparty libraries are implemented this way.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_event-loop-context">Event-loop context</h3>
+<div class="paragraph">
+<p>An event loop context uses an event loop to run code: handlers are executed directly on the IO threads, as
 a consequence:</p>
 </div>
 <div class="ulist">
@@ -957,75 +975,12 @@ with that event loop.</p>
 always be executed on the same thread, thus removing the need for synchronization and other locking mechanisms.</p>
 </div>
 <div class="paragraph">
-<p>This is the type of context that is the default and most commonly used type of context. Verticles deployed
+<p>This is the type of context that is the default and most commonly used type of context. A verticle deployed
 without the worker flag will always be deployed with an event loop context.</p>
 </div>
-<div class="paragraph">
-<p>When Vert.x creates an event loop context, it chooses an event loop for this context, the event loop is chosen
-via a round robin algorithm. This can be demonstrated by creating a timer many times:</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">System.out.println(Thread.currentThread());
-Vertx vertx = Vertx.vertx();
-for (int i = 0; i &lt; 20; i++) {
-  int index = i;
-  vertx.setTimer(1, timerID -&gt; {
-    System.out.println(index + ":" + Thread.currentThread());
-  });
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The result is:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Thread[main,5,main]
-0:Thread[vert.x-eventloop-thread-0,5,main]
-1:Thread[vert.x-eventloop-thread-1,5,main]
-2:Thread[vert.x-eventloop-thread-2,5,main]
-3:Thread[vert.x-eventloop-thread-3,5,main]
-4:Thread[vert.x-eventloop-thread-4,5,main]
-5:Thread[vert.x-eventloop-thread-5,5,main]
-6:Thread[vert.x-eventloop-thread-6,5,main]
-7:Thread[vert.x-eventloop-thread-7,5,main]
-8:Thread[vert.x-eventloop-thread-8,5,main]
-9:Thread[vert.x-eventloop-thread-9,5,main]
-10:Thread[vert.x-eventloop-thread-10,5,main]
-11:Thread[vert.x-eventloop-thread-11,5,main]
-12:Thread[vert.x-eventloop-thread-12,5,main]
-13:Thread[vert.x-eventloop-thread-13,5,main]
-14:Thread[vert.x-eventloop-thread-14,5,main]
-15:Thread[vert.x-eventloop-thread-15,5,main]
-16:Thread[vert.x-eventloop-thread-0,5,main]
-17:Thread[vert.x-eventloop-thread-1,5,main]
-18:Thread[vert.x-eventloop-thread-2,5,main]
-19:Thread[vert.x-eventloop-thread-3,5,main]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>As we can see we obtained different event loop threads for each timer and the threads are obtained with
-a round robin policy. Note that the number of event loop threads by default depends on your CPU but this can
-be configured.</p>
-</div>
-<div class="paragraph">
-<p>An event loop context guarantees to always use the same thread, however the converse is not true: the same thread
-can be used by different event loop contexts. The previous example shows clearly that a same thread is used
-for different event loops by the Round Robin policy.</p>
-</div>
-<div class="paragraph">
-<p>The default number of event loop created by a Vertx instance is twice the number of cores of your CPU. This value can
-be overriden when creating a Vertx instance:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx(new VertxOptions().setEventLoopPoolSize(10));</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_worker-context">Worker context</h4>
+<div class="sect2">
+<h3 id="_worker-context">Worker context</h3>
 <div class="paragraph">
 <p>Worker contexts are assigned to verticles deployed with the worker option enabled. The worker context is
 differentiated from standard event loop contexts in that workers are executed on a separate worker thread pool.</p>
@@ -1039,782 +994,73 @@ will block the event loop: blocking such thread will not impact the application 
 thread at any given time. That is, handlers executed on a worker context will always be executed
 sequentially - one after the other - but different actions may be executed on different threads.</p>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_context-exception-handler">Context exception handler</h3>
 <div class="paragraph">
-<p>A common pattern is to deploy worker verticles and send them a message and then the worker replies to this message:</p>
+<p>todo</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_contexts-and-tracing">Contexts and tracing</h3>
+<div class="paragraph">
+<p>Since Vert.x 4, Vert.x integrates with popular distributing tracing systems.</p>
+</div>
+<div class="paragraph">
+<p>Tracing libraries usually rely on <a href="https://en.wikipedia.org/wiki/Thread-local_storage">thread local storage</a> to
+propagate tracing data, e.g a trace received when processing an HTTP request should be propagated throughout the
+HTTP client.</p>
+</div>
+<div class="paragraph">
+<p>Vert.x integrates tracing in a similar fashion but relies on contexts instead of thread local. Contexts are indeed
+propagated by Vert.x APIs and therefore offers a reliable storage for implementing tracing.</p>
+</div>
+<div class="paragraph">
+<p>Since all HTTP requests processed by a given server use the same context that created the HTTP server, the server context
+is <em>duplicated</em> for each HTTP request, to grant unicity to each HTTP request.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.deployVerticle(new AbstractVerticle() {
-  @Override
-  public void start() throws Exception {
-    vertx.eventBus().consumer("the-address", msg -&gt; {
-      try {
-        Thread.sleep(10);
-        System.out.println("Executed by " + Thread.currentThread());
-        msg.reply("whatever");
-      } catch (InterruptedException e) {
-        msg.fail(0, "Interrupted");
-      }
-    });
-  }
-}, new DeploymentOptions().setWorker(true));
-
-// Send 10 messages
-send(vertx, 10);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Executed by Thread[vert.x-worker-thread-1,5,main]
-Executed by Thread[vert.x-worker-thread-2,5,main]
-Executed by Thread[vert.x-worker-thread-3,5,main]
-Executed by Thread[vert.x-worker-thread-4,5,main]
-Executed by Thread[vert.x-worker-thread-5,5,main]
-Executed by Thread[vert.x-worker-thread-6,5,main]
-Executed by Thread[vert.x-worker-thread-7,5,main]
-Executed by Thread[vert.x-worker-thread-8,5,main]
-Executed by Thread[vert.x-worker-thread-9,5,main]
-Executed by Thread[vert.x-worker-thread-10,5,main]
-Executed by Thread[vert.x-worker-thread-11,5,main]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The previous example clearly shows that the worker context of the verticle use different worker threads
-for delivering the messages:</p>
-</div>
-<div class="paragraph">
-<p>However the same thread can be used by several worker verticles:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx(new VertxOptions().setWorkerPoolSize(2));
-vertx.deployVerticle(
-    TheWorker.class.getName(),
-    new DeploymentOptions().setWorker(true).setInstances(4)
-);
-for (int i = 0;i &lt; 10;i++) {
-  vertx.eventBus().send("the-address", "the-message", reply -&gt; {
-    System.out.println(reply.result().body());
-  });
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class MyVerticle extends AbstractVerticle {
+ public void start() {
+   vertx.createHttpServer()
+     .requestHandler(request -&gt; {
+       // Executed in a duplicate verticle context
+     })
+     .listen(8080, "localhost");
+ }
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>This prints:</p>
+<p>Duplication shares most of the characteristics of the original context and provides a specific local storage.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
-Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
-Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
-Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
-Executed by worker 2 with Thread[vert.x-worker-thread-0,5,main]
-Executed by worker 1 with Thread[vert.x-worker-thread-1,5,main]
-Executed by worker 4 with Thread[vert.x-worker-thread-1,5,main]
-Executed by worker 3 with Thread[vert.x-worker-thread-0,5,main]
-Executed by worker 4 with Thread[vert.x-worker-thread-1,5,main]
-Executed by worker 3 with Thread[vert.x-worker-thread-0,5,main]</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">vertx.createHttpServer()
+ .requestHandler(request -&gt; {
+   JsonObject specificRequestData = getRequestData(request);
+   Context context = vertx.getOrCreateContext();
+   context.putLocal("my-stuff", specificRequestData);
+   processRequest(request);
+ })
+ .listen(8080, "localhost");</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The same worker verticle class can be deployed several times by specifying the number of instances. This allows
-to concurrently process blocking tasks:</p>
+<p>Later the application can use it:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.deployVerticle(
-    TheWorker.class.getName(),
-    new DeploymentOptions().setWorker(true).setInstances(3)
-);
-for (int i = 0;i &lt; 10;i++) {
-  vertx.eventBus().send("the-address", "the-message", reply -&gt; {
-    System.out.println(reply.result().body());
-  });
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Workers can schedule timers:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.deployVerticle(new AbstractVerticle() {
-  @Override
-  public void start() throws Exception {
-    long now = System.currentTimeMillis();
-    System.out.println("Starting timer on " + Thread.currentThread());
-    vertx.setTimer(1000, id -&gt; {
-      System.out.println("Timer fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
-    });
-  }
-}, new DeploymentOptions().setWorker(true));</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Starting timer on Thread[vert.x-worker-thread-0,5,main]
-Timer fired Thread[vert.x-worker-thread-1,5,main] after 1007 ms</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Again the timer thread is not the same than the thread that created the timer.</p>
-</div>
-<div class="paragraph">
-<p>With a periodic timer:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.deployVerticle(new AbstractVerticle() {
-  @Override
-  public void start() throws Exception {
-    AtomicLong count = new AtomicLong(10);
-    long now = System.currentTimeMillis();
-    System.out.println("Starting periodic on " + Thread.currentThread());
-    vertx.setPeriodic(1000, id -&gt; {
-      if (count.decrementAndGet() &lt; 0) {
-        vertx.cancelTimer(id);
-      }
-      System.out.println("Periodic fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
-    });
-  }
-}, new DeploymentOptions().setWorker(true));</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>we get a different thread for each event:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Starting timer on Thread[vert.x-worker-thread-0,5,main]
-Timer fired Thread[vert.x-worker-thread-1,5,main] after 1007 ms</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Since the worker thread may block, the delivery cannot be guaranteed in time:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.deployVerticle(new AbstractVerticle() {
-  @Override
-  public void start() throws Exception {
-    AtomicLong count = new AtomicLong(10);
-    long now = System.currentTimeMillis();
-    System.out.println("Starting periodic on " + Thread.currentThread());
-    vertx.setPeriodic(1000, id -&gt; {
-      if (count.decrementAndGet() &lt; 0) {
-        vertx.cancelTimer(id);
-        System.exit(0);
-      }
-      System.out.println("Periodic fired " + Thread.currentThread() + " after " + (System.currentTimeMillis() - now) + " ms");
-    });
-  }
-}, new DeploymentOptions().setWorker(true));</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Starting periodic on Thread[vert.x-worker-thread-0,5,main]
-Periodic fired Thread[vert.x-worker-thread-1,5,main] after 1006 ms
-Periodic fired Thread[vert.x-worker-thread-2,5,main] after 2006 ms
-Periodic fired Thread[vert.x-worker-thread-3,5,main] after 3005 ms
-Periodic fired Thread[vert.x-worker-thread-4,5,main] after 4007 ms
-Periodic fired Thread[vert.x-worker-thread-5,5,main] after 5006 ms
-Periodic fired Thread[vert.x-worker-thread-6,5,main] after 6007 ms
-Periodic fired Thread[vert.x-worker-thread-7,5,main] after 7006 ms
-Periodic fired Thread[vert.x-worker-thread-8,5,main] after 8005 ms
-Periodic fired Thread[vert.x-worker-thread-9,5,main] after 9007 ms
-Periodic fired Thread[vert.x-worker-thread-10,5,main] after 10004 ms</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Just like event loop, the size of the worker thread pool can be configured when creatin a Vertx instance:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx(new VertxOptions().setEventLoopPoolSize(10));</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_multi-threaded-worker-context">Multi-threaded worker context</h4>
-<div class="paragraph">
-<p>Multi-threaded contexts are assigned to verticles deployed with the multi-threaded option enabled. Whereas standard
-worker contexts execute actions in order on a variety of threads, the multi-threaded worker context removes the
-strong ordering of events to allow the execution of multiple events concurrently. This means that the user is
-responsible for performing the appropriate concurrency control such as synchronization and locking.</p>
-</div>
-<div class="paragraph">
-<p>This feature is deprecated since Vert.x 3.6 and will be removed in Vert.x 4. This feature is often confusing for
-the user  and it is possible to achieve the same concurrency with an event-loop context and <code>executeBlocking</code> with
-ordered set to <code>false</code>.</p>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Context context = vertx.getOrCreateContext();
+JsonObject specificRequestData = context.getLocal("my-stuff");</code></pre>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_dealing-with-contexts">Dealing with contexts</h3>
+<h3 id="_context-internals">Context internals</h3>
 <div class="paragraph">
-<p>Using a context is usually transparent, Vert.x will manage contexts implicitly when deploying a Verticle,
-registering an Event Bus handler, etc&#8230;&#8203; However the Vert.x API provides several ways to interact with a Context
-allowing for manual context switching.</p>
-</div>
-<div class="sect3">
-<h4 id="_the-current-context">The current context</h4>
-<div class="paragraph">
-<p>The static <code>Vertx.currentContext()</code> methods returns the current context if there is one, it returns null otherwise.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-System.out.println("Current context is " + Vertx.currentContext());</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>We get obviously <code>null</code> no matter the Vertx instance we created before:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Current context is null</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Now the same from a verticle leads to obtaining the <code>Verticle</code> context:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.deployVerticle(new AbstractVerticle() {
-  public void start() throws Exception {
-    System.out.println("Current context is " + Vertx.currentContext());
-    System.out.println("Verticle context is " + context);
-    System.exit(0);
-  }
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>We get:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Current context is io.vertx.core.impl.EventLoopContext@71379d71
-Verticle context is io.vertx.core.impl.EventLoopContext@71379d71</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_creating-or-reusing-a-context">Creating or reusing a context</h4>
-<div class="paragraph">
-<p>The <code>vertx.getOrCreateContext()</code> method returns the context associated with the current thread (like <code>currentContext</code>)
-otherwise it creates a new context, associates it to an event loop and returns it:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-Context context = vertx.getOrCreateContext();
-System.out.println("Current context is " + Vertx.currentContext());</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Note, that creating a context, will not associate the current thread with this context. This will indeed not
-change the nature of the current thread! However we can now use this context for running an action:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-Context context = vertx.getOrCreateContext();
-context.runOnContext(v -&gt; {
-  System.out.println("Current context is " + Vertx.currentContext());
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Current context is io.vertx.core.impl.EventLoopContext@3fcd88a9</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Calling <code>getOrCreateContext</code> from a verticle returns the context associated with the Verticle:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.deployVerticle(new AbstractVerticle() {
-  public void start() throws Exception {
-    Context context = vertx.getOrCreateContext();
-    System.out.println(context);
-    System.out.println(vertx.getOrCreateContext());
-  }
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">io.vertx.core.impl.EventLoopContext@6a5235dc
-io.vertx.core.impl.EventLoopContext@6a5235dc</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_running-on-context">Running on context</h4>
-<div class="paragraph">
-<p>The <code>io.vertx.core.Context.runOnContext(Handler)</code> method can be used when the thread attached to the context needs
-to run a particular task on a context.</p>
-</div>
-<div class="paragraph">
-<p>For instance, the context thread initiates a non Vert.x action, when this action ends it needs to do update some
-state and it needs to be done with the context thread to guarantee that the state will be visible by the
-context thread.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Context context = Vertx.currentContext();
-
-System.out.println("Running with context : " + Vertx.currentContext());
-
-// Our blocking action
-Thread thread = new Thread() {
-  public void run() {
-
-    // No context here!
-    System.out.println("Current context : " + Vertx.currentContext());
-
-    int n = getNumberOfFiles();
-    context.runOnContext(v -&gt; {
-
-      // Runs on the same context
-      System.out.println("Runs on the original context : " + Vertx.currentContext());
-      numberOfFiles = n;
-    });
-  }
-};
-
-//
-thread.start();</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Running with context : io.vertx.core.impl.EventLoopContext@69cdd6d8
-Current context : null
-Runs on the original context : io.vertx.core.impl.EventLoopContext@69cdd6d8</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The <code>vertx.runOnContext(Handler&lt;Void&gt;)</code> is a shortcut for what we have seen before: it calls the
-<code>getOrCreateContext</code> method and schedule a task for execution via the <code>context.runOnContext(Handler&lt;Void&gt;)</code> method.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_blocking">Blocking</h4>
-<div class="paragraph">
-<p>Before Vert.x 3, using blocking API required to deploy a worker Verticle. Vert.x 3 provides an additional API
-for using a blocking API:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">vertx.runOnContext(v -&gt; {
-
-  // On the event loop
-  System.out.println("Calling blocking block from " + Thread.currentThread());
-
-  Handler&lt;Future&lt;String&gt;&gt; blockingCodeHandler = future -&gt; {
-    // Non event loop
-    System.out.println("Computing with " + Thread.currentThread());
-    future.complete("some result");
-  };
-
-  Handler&lt;AsyncResult&lt;String&gt;&gt; resultHandler = result -&gt; {
-    // Back to the event loop
-    System.out.println("Got result in " + Thread.currentThread());
-  };
-
-  // Execute the blocking code handler and the associated result handler
-  vertx.executeBlocking(blockingCodeHandler, resultHandler);
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Calling blocking block from Thread[vert.x-eventloop-thread-0,5,main]
-Computing with Thread[vert.x-worker-thread-0,5,main]
-Got result in Thread[vert.x-eventloop-thread-0,5,main]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>While the blocking action executes with a worker thread, the result handler is executed with the same event
-loop context.</p>
-</div>
-<div class="paragraph">
-<p>The blocking action is provided a <code>Future</code> argument that is used for signaling when the result is obtained,
-usually a result of the blocking API.</p>
-</div>
-<div class="paragraph">
-<p>When the blocking action fails the result handler will get the failure as cause of the async result object:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.runOnContext(v -&gt; {
-
-  Handler&lt;Future&lt;String&gt;&gt; blockingCodeHandler = future -&gt; {
-    throw new RuntimeException();
-  };
-
-  Handler&lt;AsyncResult&lt;String&gt;&gt; resultHandler = result -&gt; {
-    if (result.succeeded()) {
-      System.out.println("Got result");
-    } else {
-      System.out.println("Blocking code failed");
-      result.cause().printStackTrace(System.out);
-    }
-  };
-
-  vertx.executeBlocking(blockingCodeHandler, resultHandler);
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Blocking code failed
-java.lang.RuntimeException
-at org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure.lambda$null$0(ExecuteBlockingThrowingFailure.java:19)
-at org.vietj.vertx.eventloop.ExecuteBlockingThrowingFailure$$Lambda$4/163784093.handle(Unknown Source)
-at io.vertx.core.impl.ContextImpl.lambda$executeBlocking$2(ContextImpl.java:217)
-at io.vertx.core.impl.ContextImpl$$Lambda$6/1645685573.run(Unknown Source)
-at io.vertx.core.impl.OrderedExecutorFactory$OrderedExecutor.lambda$new$180(OrderedExecutorFactory.java:91)
-at io.vertx.core.impl.OrderedExecutorFactory$OrderedExecutor$$Lambda$2/1053782781.run(Unknown Source)
-at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
-at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
-at java.lang.Thread.run(Thread.java:745)</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The blocking action can also report the failure on the <code>Future</code> object:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.runOnContext(v -&gt; {
-
-  Handler&lt;Future&lt;String&gt;&gt; blockingCodeHandler = future -&gt; {
-    try {
-      throw new Exception();
-    } catch (Exception e) {
-      future.fail(e);
-    }
-  };
-
-  Handler&lt;AsyncResult&lt;String&gt;&gt; resultHandler = result -&gt; {
-    if (result.succeeded()) {
-      System.out.println("Got result");
-    } else {
-      System.out.println("Blocking code failed");
-      result.cause().printStackTrace(System.out);
-    }
-  };
-
-  vertx.executeBlocking(blockingCodeHandler, resultHandler);
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Obviously executing a task from the blocking action on the context will use the event loop:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">vertx.runOnContext(v -&gt; {
-
-  // On the event loop
-  System.out.println("Calling blocking block from " + Thread.currentThread());
-
-  Handler&lt;Future&lt;String&gt;&gt; blockingCodeHandler = future -&gt; {
-    // Non event loop
-    System.out.println("Computing with " + Thread.currentThread());
-
-    // Running on context from the worker
-    vertx.runOnContext(v2 -&gt; {
-      System.out.println("Running on context from the worker " + Thread.currentThread());
-    });
-  };
-
-  // Execute the blocking code handler and the associated result handler
-  vertx.executeBlocking(blockingCodeHandler, result -&gt; {});
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Which outputs:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Calling blocking block from Thread[vert.x-eventloop-thread-0,5,main]
-Computing with Thread[vert.x-worker-thread-0,5,main]
-Running on context from the worker Thread[vert.x-eventloop-thread-0,5,main]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This API is somewhat similar to deploying a worker Verticle, although its purpose is to execute a single
-blocking operation from an event loop context.</p>
-</div>
-<div class="admonitionblock caution">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-caution" title="Caution"></i>
-</td>
-<td class="content">
-while the <code>executeBlocking</code> is a <code>Vertx</code> method, the blocking actions are scheduled on the underlying
-context and serialized, i.e executed one after another and not in parallel.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Execute blocking for any particular verticle instance uses the same context as that instance.</p>
-</div>
-<div class="paragraph">
-<p>By default, if you call <code>executeBlocking</code> multiple times in any particular instance they will be executed in the order you
-called them. If we didn&#8217;t do that you&#8217;d get into a mess, e.g. if you did an insertBlocking to insert
-some data into a table, followed by another to select from that table, then there&#8217;d be no guarantee in which
-order they occurred so you might not find your data.</p>
-</div>
-<div class="paragraph">
-<p>When several blocking tasks are submitted, the current implementation picks an available worker for executing
-the first task, after its execution, it will execute any pending tasks. After the executions of all the tasks,
-the worker stops and goes back in the worker pool.</p>
-</div>
-<div class="paragraph">
-<p>It is possible to execute also unordered blocks, i.e the blocks can be executed in parallel by setting the
-<code>ordered</code> argument to <code>false</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">vertx.runOnContext(v -&gt; {
-
-  // The blocks are executed on any available worker thread
-  vertx.executeBlocking(blockingCodeHandler1, false, ar -&gt; {});
-  vertx.executeBlocking(blockingCodeHandler2, false, ar -&gt; {});
-  vertx.executeBlocking(blockingCodeHandler3, false, ar -&gt; {});
-});</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_determining-the-kind-of-context">Determining the kind of context</h4>
-<div class="paragraph">
-<p>The kind of a context can be determined with the methods:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>Context#isEventLoopContext</code></p>
-</li>
-<li>
-<p><code>Context#isWorkerContext</code></p>
-</li>
-<li>
-<p><code>Context#isMultiThreadedWorkerContext</code></p>
-</li>
-</ul>
-</div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-the nature of the context does not guarantee the nature of the thread, indeed the <code>executeBlocking</code>
-method can execute a task with a worker thread in an event loop context
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_determining-the-kind-of-thread">Determining the kind of thread</h4>
-<div class="paragraph">
-<p>As said earlier, the nature of the context impacts the concurrency. The <code>executeBlocking</code> method can even change
-use a worker thread in an event loop context. The kind of context should be properly determined with the static methods:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>Context#isOnEventLoopThread()</code></p>
-</li>
-<li>
-<p><code>Context#isOnWorkerThread()</code></p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_concurrency">Concurrency</h4>
-<div class="paragraph">
-<p>When the Vert.x API needs a context, it calls the <code>vertx.getOrCreateContext()</code> method, when the Vert.x API is used
-in a context, for instance when deploying a Verticle. This implies that any service created from this Verticle
-will reuse the same context, for instance:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Creating a server</p>
-</li>
-<li>
-<p>Creating a client</p>
-</li>
-<li>
-<p>Creating a timer</p>
-</li>
-<li>
-<p>Registering an event bus handler</p>
-</li>
-<li>
-<p>etc&#8230;&#8203;</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Such <em>services</em> will call back the Verticle that created them at some point, how this happens is according
-to the context: the context remains the same, however its nature has a direct impact on the concurrency as it
-govers the threading model:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">vertx.deployVerticle(new AbstractVerticle() {
-  int value = 0;
-  @Override
-  public void start() throws Exception {
-    vertx.setPeriodic(100, id -&gt; value++);
-    vertx.eventBus().consumer("the-address", msg -&gt; {
-      msg.reply(value);
-    });
-  }
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Deployed as a worker, no exclusion is required, however the changes must be visibles between threads, pretty much like this:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">vertx.deployVerticle(new AbstractVerticle() {
-  volatile int value;
-  @Override
-  public void start() throws Exception {
-    vertx.setPeriodic(100, id -&gt; value++);
-    vertx.eventBus().consumer("the-address", msg -&gt; {
-      msg.reply(value);
-    });
-  }
-}, new DeploymentOptions().setWorker(true));</code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_embedding-vert-x">Embedding Vert.x</h3>
-<div class="paragraph">
-<p>When Vert.x is embedded like in a <em>main</em> Java method or a <em>junit</em> test, the thread creating Vert.x can be any kind of thread, but
-it is certainly not a Vert.x thread. Any action that requires a context will implicitly create an event loop context for
-executing this action.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-HttpServer server = vertx.createHttpServer();
-server.listen(result -&gt; {
-  // This runs in a context created just for the purpose of this http server
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>When several actions are done, there will use different context and there are high chances they will use a
-different event loop thread.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.createHttpServer().requestHandler(requestHandler).listen(result -&gt; {
-  // This executes in a context
-  System.out.println("Current thread is " + Thread.currentThread());
-  });
-vertx.createHttpServer().requestHandler(requestHandler).listen(result -&gt; {
-  // This executes in a different context
-  System.out.println("Current thread is " + Thread.currentThread());
-  });</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Current thread is Thread[vert.x-eventloop-thread-1,5,main]
-Current thread is Thread[vert.x-eventloop-thread-0,5,main]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Therefore accessing a shared state from both servers should not be done!</p>
-</div>
-<div class="paragraph">
-<p>When the same context needs to be used then the actions can be grouped with a <code>runOnContext</code> call:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
-vertx.runOnContext(v -&gt; {
-  vertx.createHttpServer().requestHandler(requestHandler).listen(result -&gt; {
-    // This executes in a context
-    System.out.println("Current thread is " + Thread.currentThread());
-  });
-  vertx.createHttpServer().requestHandler(requestHandler).listen(result -&gt; {
-    // This executes in the same context
-    System.out.println("Current thread is " + Thread.currentThread());
-  });
-});</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>This prints:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Current thread is Thread[vert.x-eventloop-thread-0,5,main]
-Current thread is Thread[vert.x-eventloop-thread-0,5,main]</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Now we can share state between the two servers safely.</p>
+<p>todo</p>
 </div>
 </div>
 </div>
@@ -1962,7 +1208,7 @@ bootstrap.group(acceptorGroup, eventLoop);</code></pre>
 as network events, channel life cycle, etc&#8230;&#8203;</p>
 </div>
 <div class="paragraph">
-<p>The <code>ContextInternal#executeFromIO</code> methods is used to dispatch events to the application as it ensures:</p>
+<p>The <code>ContextInternal#dispatch</code> methods is used to dispatch events to the application as it ensures:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1995,13 +1241,13 @@ bootstrap.bind(socketAddress).addListener(new ChannelFutureListener() {
   @Override
   public void operationComplete(ChannelFuture future) throws Exception {
     <i class="conum" data-value="2"></i><b>(2)</b>
-    context.executeFromIO(future, bindHandler);
+    context.dispatch(future, bindHandler);
   }
 });</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Typical usage of <code>executeFromIO</code>:</p>
+<p>Typical usage of <code>dispatch</code>:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -2063,7 +1309,7 @@ bootstrap.bind(socketAddress).addListener(new ChannelFutureListener() {
    * @param handler the handler to be called
    * @return this object
    */
-  TimeServer requestHandler(Handler&lt;Future&lt;Long&gt;&gt; handler);
+  TimeServer requestHandler(Handler&lt;Promise&lt;Long&gt;&gt; handler);
 
   /**
    * Start and bind the time server.
@@ -2173,7 +1419,7 @@ example:</p>
 bindFuture.addListener(new ChannelFutureListener() {
   @Override
   public void operationComplete(ChannelFuture future) {
-    context.executeFromIO(v -&gt; { <i class="conum" data-value="1"></i><b>(1)</b>
+    context.dispatch(v -&gt; { <i class="conum" data-value="1"></i><b>(1)</b>
 
       //
       if (future.isSuccess()) {
@@ -2191,7 +1437,7 @@ bindFuture.addListener(new ChannelFutureListener() {
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>use executeFromIO to dispatch to the application</td>
+<td>use <code>dispatch</code> to dispatch to the application</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
@@ -2200,7 +1446,7 @@ bindFuture.addListener(new ChannelFutureListener() {
 </table>
 </div>
 <div class="paragraph">
-<p>The most important part is that use <code>executeFromIO</code> to dispatch the result to the <code>listenHandler</code> in order
+<p>The most important part is the use of the <code>dispatch</code> method to dispatch the result to the <code>listenHandler</code> in order
 to make the application aware of the bind result.</p>
 </div>
 </div>
@@ -2212,11 +1458,11 @@ original <a href="https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-8"><code
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Future&lt;Long&gt; result = Future.future(); <i class="conum" data-value="1"></i><b>(1)</b>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Promise&lt;Long&gt; result = Promise.promise(); <i class="conum" data-value="1"></i><b>(1)</b>
 
-context.executeFromIO(result, requestHandler); <i class="conum" data-value="2"></i><b>(2)</b>
+context.dispatch(result, requestHandler); <i class="conum" data-value="2"></i><b>(2)</b>
 
-result.setHandler(ar -&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
+result.future().onComplete(ar -&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
   if (ar.succeeded()) {  <i class="conum" data-value="4"></i><b>(4)</b>
     ByteBuf time = ctx.alloc().buffer(4);
     time.writeInt((int) (ar.result() / 1000L + 2208988800L));
@@ -2232,15 +1478,15 @@ result.setHandler(ar -&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>create a new blank future that will be resolved by the <code>requestHandler</code></td>
+<td>create a new blank promise that will be resolved by the <code>requestHandler</code></td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>let the context dispatch to the <code>requestHandler</code> with <code>executeFromIO</code></td>
+<td>let the context dispatch to the <code>requestHandler</code> with <code>dispatch</code></td>
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>the future handler is called when the <code>requestHandler</code> implementation completes the future</td>
+<td>the future handler is called when the <code>requestHandler</code> implementation completes the associated promise</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="4"></i><b>4</b></td>
@@ -2253,8 +1499,8 @@ result.setHandler(ar -&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
 </table>
 </div>
 <div class="paragraph">
-<p>Again here,  <code>executeFromIO</code> is used when a TIME request event happens, the future to be completed is
-passed to the <code>requestHandler</code>. When this future is completed, the handler will either write the
+<p>Again here, <code>dispatch</code> is used when a TIME request event happens, the promise to be completed is
+passed to the <code>requestHandler</code>. When this promise is completed, the handler will either write the
 time result to the channel or close it.</p>
 </div>
 </div>
@@ -2381,10 +1627,10 @@ called with the TIME request result.</p>
 <h3 id="_the-client-connect">The client connect</h3>
 <div class="paragraph">
 <p>The bootstrap setup is very similar to the original example, in case of a failure the application callback
-uses again <code>executeFromIO</code> for the same reason thatn before.</p>
+uses again <code>dispatch</code> for the same reason thatn before.</p>
 </div>
 <div class="paragraph">
-<p>The <code>TimeClientHandler</code> integration uses also <code>executeFromIO</code> for calling back the application:</p>
+<p>The <code>TimeClientHandler</code> integration uses also <code>dispatch</code> for calling back the application:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2393,7 +1639,7 @@ connectFuture.addListener(new ChannelFutureListener() {
   @Override
   public void operationComplete(ChannelFuture future) throws Exception {
     if (!future.isSuccess()) { <i class="conum" data-value="2"></i><b>(2)</b>
-      context.executeFromIO(v -&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
+      context.dispatch(v -&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
         resultHandler.handle(io.vertx.core.Future.failedFuture(future.cause()));
       });
     }
@@ -2422,7 +1668,7 @@ connectFuture.addListener(new ChannelFutureListener() {
 successfully, the <code>TimeServerHandler</code> will handle the network response to the application.</p>
 </div>
 <div class="paragraph">
-<p>When a connect failure happens, like in the server implementation, <code>executeFromIO</code> is used to dispatch the
+<p>When a connect failure happens, like in the server implementation, <code>dispatch</code> is used to dispatch the
 failure to the <code>resultHandler</code> in order to make the application aware of the connect error.</p>
 </div>
 </div>
@@ -2438,7 +1684,7 @@ original <a href="https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9"><code
 long currentTimeMillis;
 try {
   currentTimeMillis = (m.readUnsignedInt() - 2208988800L) * 1000L; <i class="conum" data-value="1"></i><b>(1)</b>
-  context.executeFromIO(Future.succeededFuture(currentTimeMillis), resultHandler); <i class="conum" data-value="2"></i><b>(2)</b>
+  context.dispatch(Future.succeededFuture(currentTimeMillis), resultHandler); <i class="conum" data-value="2"></i><b>(2)</b>
   resultHandler = null; <i class="conum" data-value="3"></i><b>(3)</b>
   ctx.close(); <i class="conum" data-value="4"></i><b>(4)</b>
 } finally {
@@ -2454,7 +1700,7 @@ try {
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>let the context dispatch the result to the <code>resultHandler</code> with <code>executeFromIO</code></td>
+<td>let the context dispatch the result to the <code>resultHandler</code> with <code>dispatch</code></td>
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
@@ -2467,7 +1713,7 @@ try {
 </table>
 </div>
 <div class="paragraph">
-<p>Again here, <code>executeFromIO</code> is used when a TIME response event happens to dispatch the result to the <code>resultHandler</code></p>
+<p>Again here, <code>dispatch</code> is used when a TIME response event happens to dispatch the result to the <code>resultHandler</code></p>
 </div>
 </div>
 </div>
@@ -3055,25 +2301,19 @@ its <code>close(Handler&lt;AsyncResult&lt;Void&gt;&gt; completionHandler)</code>
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class ContextCloseHook implements Closeable {
 
-  private final Context context;
+  private final ContextInternal context;
 
   public ContextCloseHook(Vertx vertx) {
-    this.context = vertx.getOrCreateContext();
+    this.context = (ContextInternal) vertx.getOrCreateContext();
 
     // Get notified when this context closes
     context.addCloseHook(this);
   }
 
   @Override
-  public void close(Handler&lt;AsyncResult&lt;Void&gt;&gt; completionHandler) {
-    // Create a new future
-    Future&lt;Void&gt; fut = Future.future();
-
-    // Set the close handler to be notified when the future resolves
-    fut.setHandler(completionHandler);
-
+  public void close(Promise&lt;Void&gt; completion) {
     // Do cleanup, the method will complete the future
-    doClose(fut);
+    doClose(completion);
   }
 
   /**
@@ -3085,10 +2325,10 @@ its <code>close(Handler&lt;AsyncResult&lt;Void&gt;&gt; completionHandler)</code>
     context.removeCloseHook(this);
 
     // Do cleanup, the method will complete the future
-    doClose(Future.future());
+    doClose(Promise.promise());
   }
 
-  private void doClose(Future&lt;Void&gt; fut) {
+  private void doClose(Promise&lt;Void&gt; fut) {
 
     // No-op, in reality it would be a resource like a Netty channel, a file, etc...
     fut.complete();
@@ -3126,7 +2366,7 @@ method should call <code>Context#removeCloseHook</code> to remove the hook.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2018-11-25 15:14:55 UTC
+Last updated 2021-08-16 12:52:06 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
