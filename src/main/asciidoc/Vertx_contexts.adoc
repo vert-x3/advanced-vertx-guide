@@ -199,9 +199,104 @@ Context context = vertx.getOrCreateContext();
 JsonObject specificRequestData = context.getLocal("my-stuff");
 ----
 
-=== Context promises
+=== Dispatching events on a context
 
-todo
+The most common way to execute a piece of code is achieved with `runOnContext`. Although it is very suited for integrating
+non Vert.x systems with Vert.x, it is not the best fit to integrate code executing at the event-loop level (such as Netty)
+with application code.
+
+There are internal methods to achieve similar behaviors depending on the situation
+
+- `ContextInternal#dispatch(E, Handler<E>)`
+- `ContextInternal#execute(E, Handler<E>)`
+- `ContextInternal#emit(E, Handler<E>)`
+
+==== Dispatch
+
+`dispatch` assumes the caller thread is the context thread, it associates the current thread of execution with the context:
+
+[source,java]
+----
+assertNull(context, Vertx.currentContext());
+context.dispatch(event, evt -> {
+  assertSame(context, Vertx.currentContext());
+});
+----
+
+The handler is also monitored by the blocked thread checker.
+
+Finally, any exception thrown by the handler will be reported to the context:
+
+[source,java]
+----
+context.exceptionHandler(err -> {
+  // Should receive the exception thrown below
+});
+context.dispatch(event, evt -> {
+  throw new RuntimeException();
+});
+----
+
+==== Execute
+
+`execute` executes a task on the context, when the caller thread is already a context thread, the task is executed directly
+with no trampolining, otherwise a task is scheduled for execution.
+
+NOTE: no context associated is done
+
+==== Emit
+
+`emit` is a combination of `execute` and `dispatch`
+
+[source,java]
+----
+default void emit(E event, Handler<E> eventHandler) {
+  execute(v -> dispatch(argument, task));
+}
+----
+
+`emit` can be used from any thread to emit an event to a handler:
+
+- from any thread, it behaves like `runOnContext`
+- from the context thread, it runs the event handler with the context thread local association, the block thread checker and reports failures on the context
+
+In most situations, the `emit` method is the way to go to have an application process an event. The main purpose of `dispatch`
+and `execute` methods is to give more control to the code to achieve very specific things.
+
+=== Context aware fuitures
+
+Until Vert.x 4, `Future` were statically created object with no specific relationship to a context. Vert.x 4 provides a future
+based API which need to respect the same semantics as Vert.x 3: any callback on a future should predictably run on the same context.
+
+Vert.x 4 API creates futures bound to the caller context that run callbacks on the context:
+
+[source,java]
+----
+Promise<String> promise = context.promise();
+
+Future<String> future = promise.future();
+
+future.onSuccess(handler);
+----
+
+Any callback is emitted on the context that created the promise, the code above is pretty much like:
+
+[source,java]
+----
+Promise<String> promise = Promise.promise();
+
+Future<String> future = promise.future();
+
+future.onSuccess(result -> context.emit(result, handler));
+----
+
+In addition, the API allows to create succeeded and failed futures:
+
+[source,java]
+----
+Future<String> succeeded = context.succeededFuture("OK usa");
+Future<String> failed = context.failedFuture("Oh sorry");
+----
 
 === Close hooks
 

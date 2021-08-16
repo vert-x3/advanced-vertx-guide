@@ -38,7 +38,7 @@ public class TimeClientImpl implements TimeClient {
     return promise.future();
   }
 
-  private Bootstrap createBootstrap(ContextInternal context, Promise<Long> resultHandler) {
+  private Bootstrap createBootstrap(ContextInternal context, Promise<Long> result) {
     // The Vert.x internal context gives access to Netty's event loop
     EventLoop eventLoop = context.nettyEventLoop();  // <1>
 
@@ -50,8 +50,8 @@ public class TimeClientImpl implements TimeClient {
     bootstrap.handler(new ChannelInitializer<Channel>() {
       @Override
       protected void initChannel(Channel ch) {
-        ChannelPipeline pipeline = ch.pipeline(); // <4>
-        pipeline.addLast(new TimeClientHandler(context, resultHandler));
+        ChannelPipeline pipeline = ch.pipeline(); // <3>
+        pipeline.addLast(new TimeClientHandler(result));
       }
     });
 
@@ -66,8 +66,8 @@ public class TimeClientImpl implements TimeClient {
     connectFuture.addListener(new ChannelFutureListener() {
       @Override
       public void operationComplete(ChannelFuture future) throws Exception {
-        if (!future.isSuccess()) { // <2>
-          result.fail(future.cause()); // 3
+        if (!future.isSuccess()) {
+          result.fail(future.cause()); // 2
         }
       }
     });

@@ -3,20 +3,14 @@ package org.vietj.vertx.nettyclient.impl;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import io.vertx.core.impl.ContextInternal;
 
 public class TimeClientHandler extends ChannelInboundHandlerAdapter {
 
-  private final ContextInternal context;
-  private Promise<Long> resultHandler;
+  private Promise<Long> resultPromise;
 
-  public TimeClientHandler(ContextInternal context, Promise<Long> resultHandler) {
-    this.context = context;
-    this.resultHandler = resultHandler;
+  public TimeClientHandler(Promise<Long> resultPromise) {
+    this.resultPromise = resultPromise;
   }
 
   @Override
@@ -25,8 +19,8 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
     long currentTimeMillis;
     try {
       currentTimeMillis = (m.readUnsignedInt() - 2208988800L) * 1000L; // <1>
-      context.dispatch(Future.succeededFuture(currentTimeMillis), resultHandler); // <2>
-      resultHandler = null; // <3>
+      resultPromise.complete(currentTimeMillis);  // <2>
+      resultPromise = null; // <3>
       ctx.close(); // <4>
     } finally {
       m.release();
@@ -35,13 +29,13 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    if (resultHandler != null) {
+    if (resultPromise != null) {
 
-      // When we dispatch code to the Vert.x API we need to use executeFromIO
-      context.dispatch(Future.failedFuture(cause), resultHandler);
+      // TODO
+      resultPromise.fail(cause);
 
       // Set the handler to null
-      resultHandler = null;
+      resultPromise = null;
     }
     ctx.close();
   }

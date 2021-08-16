@@ -67,7 +67,7 @@ returns an `EventLoopGroup` for accepting connections on a server, it's typical 
 Now that we are more intimate with `ContextInternal`, let's look at how we can use it to handle Netty events such
 as network events, channel life cycle, etc...
 
-The `ContextInternal#dispatch` methods is used to dispatch events to the application as it ensures:
+The `ContextInternal#emit` methods is used to emit events to the application as it ensures:
 
 - the context concurrency: reuse the current event-loop thread or execute on a worker
 - the thread local association of the current context with the dispatch thread
@@ -80,13 +80,10 @@ Here is a short example showing a server bootstrap
 {@link org.vietj.vertx.internals.Internals#executeFromIO}
 ----
 
-Typical usage of `dispatch`:
+The typical usage of `emit` is to dispatch one or multiple events to the same handler, like an event handler.
 
-- listen handler
-- connect handler
-- request handler
-- close handler
-- etc...
+When it comes to a future, the `ContextInternal#promise` method creates a promise that will behave with listeners like
+the `emit` method.
 
 === The server
 
@@ -96,7 +93,7 @@ The Vert.x TIME server exposes a simple API:
 
 - a static method to create a `TimeServer`
 - two methods: `listen` to bind a server and `close` to unbind
-- the `requestHandler` for setting an handler for handling requests
+- the `requestHandler` for setting a handler for handling requests
 
 [source,java]
 ----
@@ -141,11 +138,11 @@ example:
 ----
 {@link org.vietj.vertx.nettyserver.impl.TimeServerImpl#bind}
 ----
-<1> use `dispatch` to dispatch to the application
-<2> call the listen handler either with a success or a failure
+<1> create a promise bound to the server context
+<2> complete or succeed the result promise
+<3> return the future result
 
-The most important part is the use of the `dispatch` method to dispatch the result to the `listenHandler` in order
-to make the application aware of the bind result.
+The most important part is the creation of the context promise to make the application aware of the bind result.
 
 === The server handler
 
@@ -157,12 +154,12 @@ original https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-8[`TimeServerHand
 {@link org.vietj.vertx.nettyserver.impl.TimeServerHandler#channelActive}
 ----
 <1> create a new blank promise that will be resolved by the `requestHandler`
-<2> let the context dispatch to the `requestHandler` with `dispatch`
+<2> let the context emit the event to the `requestHandler` with `emit`
 <3> the future handler is called when the `requestHandler` implementation completes the associated promise
 <4> write the current TIME to the channel and close it after
 <5> the application failed we simply close the socket
 
-Again here, `dispatch` is used when a TIME request event happens, the promise to be completed is
+`emit` is used when a TIME request event happens, the promise to be completed is
 passed to the `requestHandler`. When this promise is completed, the handler will either write the
 time result to the channel or close it.
 
@@ -213,27 +210,21 @@ called with the TIME request result.
 === The client connect
 
 The bootstrap setup is very similar to the original example, in case of a failure the application callback
-uses again `dispatch` for the same reason thatn before.
-
-The `TimeClientHandler` integration uses also `dispatch` for calling back the application:
+uses a promise that holds the overall result.
 
 [source,java]
 ----
 {@link org.vietj.vertx.nettyclient.impl.TimeClientImpl#connect}
 ----
 <1> connect to the server
-<2> upon connect error we call the result handler with a failure
-<3> use `executeFromIO` to dispatch the connect failure to the application
+<2> upon connect error we fail the promise
 
 We only care of propagating a connect failure to the application, when the bootstrap connects
 successfully, the `TimeServerHandler` will handle the network response to the application.
 
-When a connect failure happens, like in the server implementation, `dispatch` is used to dispatch the
-failure to the `resultHandler` in order to make the application aware of the connect error.
-
 === The client handler
 
-Now let's finish our client with the `TimeServerHandler`, which is an adaptation of the Netty's
+Now let's complete our client with the `TimeServerHandler`, which is an adaptation of the Netty's
 original https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[`TimeClientHandler`]:
 
 [source,java]
@@ -241,8 +232,8 @@ original https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[`TimeClientHand
 {@link org.vietj.vertx.nettyclient.impl.TimeClientHandler#channelRead}
 ----
 <1> decode the time response from the server
-<2> let the context dispatch the result to the `resultHandler` with `dispatch`
-<3> set the `resultHandler` to `null`
+<2> complete the `resultPromise` with the response
+<3> set the `resultPromise` to `null`
 <4> close the channel
 
-Again here, `dispatch` is used when a TIME response event happens to dispatch the result to the `resultHandler`
+Again here, we complete the `resultPromise` when a TIME response event happens.

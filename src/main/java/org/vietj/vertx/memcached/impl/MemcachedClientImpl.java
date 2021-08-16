@@ -45,7 +45,7 @@ public class MemcachedClientImpl implements MemcachedClient {
 
   private final VertxInternal vertx;
   private final NetSocketInternal so;
-  private final Deque<Handler<AsyncResult<FullBinaryMemcacheResponse>>> inflight = new ConcurrentLinkedDeque<>();
+  private final Deque<Promise<FullBinaryMemcacheResponse>> inflight = new ConcurrentLinkedDeque<>();
 
   private MemcachedClientImpl(VertxInternal vertx, NetSocketInternal so) {
     this.vertx = vertx;
@@ -97,10 +97,10 @@ public class MemcachedClientImpl implements MemcachedClient {
 
     try {
       // Get the handler that will process the response
-      Handler<AsyncResult<FullBinaryMemcacheResponse>> handler = inflight.poll();
+      Promise<FullBinaryMemcacheResponse> handler = inflight.poll();
 
       // Handle the message
-      handler.handle(Future.succeededFuture(response));
+      handler.complete(response);
     } finally {
       // Release the referenced counted message
       response.release();

@@ -28,7 +28,7 @@ public class TimeServerHandler extends ChannelInboundHandlerAdapter {
 
     Promise<Long> result = Promise.promise(); // <1>
 
-    context.dispatch(result, requestHandler); // <2>
+    context.emit(result, requestHandler); // <2>
 
     result.future().onComplete(ar -> { // <3>
       if (ar.succeeded()) {  // <4>

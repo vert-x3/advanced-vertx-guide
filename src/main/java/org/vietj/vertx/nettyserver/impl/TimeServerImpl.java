@@ -52,9 +52,7 @@ public class TimeServerImpl implements TimeServer {
     createBootstrap();
 
     // Bind the server socket
-    Promise<Void> promise = context.promise();
-    bind(host, port, promise);
-    return promise.future();
+    return bind(host, port);
   }
 
   private void createBootstrap() {
@@ -73,23 +71,25 @@ public class TimeServerImpl implements TimeServer {
     });
   }
 
-  private void bind(String host, int port, Promise<Void> promise) {
+  private Future<Void> bind(String host, int port) {
+
+    Promise<Void> promise = context.promise(); // <1>
+
     ChannelFuture bindFuture = bootstrap.bind(host, port);
     bindFuture.addListener(new ChannelFutureListener() {
       @Override
       public void operationComplete(ChannelFuture future) {
-        context.dispatch(v -> { // <1>
-
-          //
-          if (future.isSuccess()) {
-            channel = future.channel();
-            promise.complete();
-          } else {
-            promise.fail(future.cause());
-          }
-        });
+        // <2>
+        if (future.isSuccess()) {
+          channel = future.channel();
+          promise.complete();
+        } else {
+          promise.fail(future.cause());
+        }
       }
     });
+
+    return promise.future(); // <3>
   }
 
   @Override

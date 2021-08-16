@@ -2,14 +2,18 @@ package org.vietj.vertx.internals;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoop;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.impl.VertxInternal;
@@ -51,23 +55,33 @@ public class Internals {
     bootstrap.group(acceptorGroup, eventLoop);
   }
 
-  public void executeFromIO(ServerBootstrap bootstrap, SocketAddress socketAddress, ContextInternal context) {
+  public Future<Void> executeFromIO(ServerBootstrap bootstrap, SocketAddress socketAddress, ContextInternal context) {
 
-    Handler<ChannelFuture> bindHandler = fut -> {
-      if (fut.isSuccess()) {
-        // Signal application with bind success
-      } else {
-        // Signal application with bind error
-      }
+    Handler<Channel> bindHandler = ch -> {
     };
 
-    // <1>
+    bootstrap.childHandler(new ChannelInitializer<Channel>() {
+      @Override
+      protected void initChannel(Channel ch) {
+        context.emit(ch, bindHandler);
+      }
+    });
+
+    Promise<Void> bindPromise = context.promise();
+
     bootstrap.bind(socketAddress).addListener(new ChannelFutureListener() {
       @Override
       public void operationComplete(ChannelFuture future) throws Exception {
-        // <2>
-        context.dispatch(future, bindHandler);
+        if (future.isSuccess()) {
+          // Signal application with bind success
+          bindPromise.complete();
+        } else {
+          // Signal application with bind error
+          bindPromise.fail(future.cause());
+        }
       }
     });
+
+    return bindPromise.future();
   }
 }
