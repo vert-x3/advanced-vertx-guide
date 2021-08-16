@@ -697,7 +697,7 @@ table.tableblock.grid-all > tbody > tr { border-bottom: 1px solid #d8d8d8; }
 <li><a href="#_worker-context">Worker context</a></li>
 <li><a href="#_context-exception-handler">Context exception handler</a></li>
 <li><a href="#_contexts-and-tracing">Contexts and tracing</a></li>
-<li><a href="#_context-internals">Context internals</a></li>
+<li><a href="#_close-hooks">Close hooks</a></li>
 </ul>
 </li>
 <li><a href="#integrating-netty">Integrating Netty</a>
@@ -1057,9 +1057,7 @@ JsonObject specificRequestData = context.getLocal("my-stuff");</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_context-internals">Context internals</h3>
-<div class="sect3">
-<h4 id="_close-hooks">Close hooks</h4>
+<h3 id="_close-hooks">Close hooks</h3>
 <div class="paragraph">
 <p>Close hooks is an internal feature of Vert.x useful for creating components that are notified when a <code>Verticle</code>
 or a <code>Vertx</code> instance is closed. It can be used for implementing <em>automatic clean-up in verticles</em>
@@ -1106,7 +1104,6 @@ the close hook is called.</p>
 </div>
 <div class="paragraph">
 <p>Likewise <code>VertxInternal</code> provides the same operation to receive notifications when a <code>Vertx</code> instance is closed.</p>
-</div>
 </div>
 </div>
 </div>
@@ -2334,7 +2331,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-16 13:18:28 UTC
+Last updated 2021-08-16 13:23:30 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
