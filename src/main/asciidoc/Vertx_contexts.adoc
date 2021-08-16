@@ -1,0 +1,205 @@
+== Contexts in Vert.x
+
+The `io.vertx.core.Context` interface is an essential component of Vert.x.
+
+At a high level contexts can be thought of as controlling the execution of how events (or tasks created by handlers) are executed by the application.
+
+Most events are dispatched through contexts, when the application consumes an event there is most likely a context associated with
+the dispatch of the event.
+
+=== Verticles
+
+When an instance of a verticle is deployed, Vert.x creates and associates a context with this instance. You can access
+this context in your verticle using the `context` field of `AbstractVerticle`:
+
+[source,java]
+----
+public class MyVerticle extends AbstractVerticle {
+  public void start() {
+    JsonObject config = context.config();
+  }
+}
+----
+
+When `MyVerticle` is deployed, Vert.x emits a _start_ event, the `start` method is called by a thread of the Verticle context:
+
+- by default the context is always an event-loop context, the caller thread is an event-loop
+- when the verticle is deployed as a worker the caller thread is one of the worker pool of Vert.x
+
+=== Propagation of contexts
+
+Most Vert.x APIs are aware of contexts.
+
+Asynchronous operations executed within a context will call back the application with the same context.
+
+Likewise, event handlers are also dispatched on the same context.
+
+[source,java]
+----
+public class MyVerticle extends AbstractVerticle {
+  public void start() {
+    Future<HttpServer> future = vertx.createHttpServer()
+      .requestHandler(request -> {
+        // Executed in the verticle context
+      })
+      .listen(8080, "localhost");
+
+    future.onComplete(ar -> {
+       // Executed in the verticle context
+    });
+  }
+}
+----
+
+=== Adhoc contexts
+
+Using Vert.x APIs without using Verticle is supported since Vert.x 3 and leads to the interesting question of
+which context is used. When a Vert.x API is called, Vert.x associates the current thread with an ad hoc context.
+
+[source,java]
+----
+public class Main {
+  public static void main(String[] args) {
+    WebClient client = WebClient.create(vertx);
+
+    for (int i = 0;i < 4;i++) {
+      client
+        .get(8080, "myserver.mycompany.com", "/some-uri")
+        .send()
+        .onSuccess(ar -> {
+         // All callbacks are on the same context
+        });
+    }
+  }
+}
+----
+
+NOTE: this behavior differs from previous major versions, Vert.x 3 would create a different context for each HTTP request.
+
+=== Dealing with contexts
+
+Most application don't need tight interactions with a context but sometimes it can be useful to access them, e.g
+your application uses another library that performs a callback on its own thread and you want to execute code
+in the original context.
+
+Above we have seen a verticle can access its context through the `context` field but that implies to use a verticle
+and to have a reference on the verticle which might not always be handy.
+
+You can get the current context with `getOrCreateContext()`:
+
+[source,java]
+----
+Context context = vertx.getOrCreateContext();
+----
+
+You can also use the static method `Vertx.currentContext()`:
+
+[source,java]
+----
+Context context = Vertx.currentContext();
+----
+
+The later might return null if the current thread is not associated with a context, whereas the former will create
+one if needed and thus never returns null.
+
+After you obtained a context, you can use it to run code in this context:
+
+[source,java]
+----
+public void integrateWithExternalSystem(Handler<Event> handler) {
+  // Capture the current context
+  Context context = vertx.getOrCreateContext();
+
+  // Run the event handler on the application context
+  externalSystem.onEvent(event -> {
+    context.runOnContext(v -> handler.handle(event));
+  });
+}
+----
+
+In practice, many Vert.x APIs and thirdparty libraries are implemented this way.
+
+=== Event-loop context
+
+An event loop context uses an event loop to run code: handlers are executed directly on the IO threads, as
+a consequence:
+
+- A handler will always be executed with the same thread
+- A handler must never block the thread, otherwise it will create starvation for all the IO tasks associated
+with that event loop.
+
+This behavior allows for a greatly simplified threading model by guaranteeing that associated handlers will
+always be executed on the same thread, thus removing the need for synchronization and other locking mechanisms.
+
+This is the type of context that is the default and most commonly used type of context. A verticle deployed
+without the worker flag will always be deployed with an event loop context.
+
+=== Worker context
+
+Worker contexts are assigned to verticles deployed with the worker option enabled. The worker context is
+differentiated from standard event loop contexts in that workers are executed on a separate worker thread pool.
+
+This separation from event loop threads allows worker contexts to execute the types of blocking operations that
+will block the event loop: blocking such thread will not impact the application other than blocking one thread.
+
+Just as is the case with the event loop context, worker contexts ensure that handlers are only executed on one
+thread at any given time. That is, handlers executed on a worker context will always be executed
+sequentially - one after the other - but different actions may be executed on different threads.
+
+=== Context exception handler
+
+todo
+
+=== Contexts and tracing
+
+Since Vert.x 4, Vert.x integrates with popular distributing tracing systems.
+
+Tracing libraries usually rely on https://en.wikipedia.org/wiki/Thread-local_storage[thread local storage] to
+propagate tracing data, e.g a trace received when processing an HTTP request should be propagated throughout the
+HTTP client.
+
+Vert.x integrates tracing in a similar fashion but relies on contexts instead of thread local. Contexts are indeed
+propagated by Vert.x APIs and therefore offers a reliable storage for implementing tracing.
+
+Since all HTTP requests processed by a given server use the same context that created the HTTP server, the server context
+is _duplicated_ for each HTTP request, to grant unicity to each HTTP request.
+
+[source,java]
+----
+public class MyVerticle extends AbstractVerticle {
+  public void start() {
+    vertx.createHttpServer()
+      .requestHandler(request -> {
+        // Executed in a duplicate verticle context
+      })
+      .listen(8080, "localhost");
+  }
+}
+----
+
+Duplication shares most of the characteristics of the original context and provides a specific local storage.
+
+[source,java]
+----
+vertx.createHttpServer()
+  .requestHandler(request -> {
+    JsonObject specificRequestData = getRequestData(request);
+    Context context = vertx.getOrCreateContext();
+    context.putLocal("my-stuff", specificRequestData);
+    processRequest(request);
+  })
+  .listen(8080, "localhost");
+----
+
+Later the application can use it:
+
+[source,java]
+----
+Context context = vertx.getOrCreateContext();
+JsonObject specificRequestData = context.getLocal("my-stuff");
+----
+
+=== Context internals
+
+todo
+

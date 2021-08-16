@@ -22,7 +22,7 @@ This is a live guide and you can contribute, just open a PR or an issue in the h
 WARNING: Some of the internal Vert.x APIs are exposed in this guide and you should keep in mind that these APIs are subject to
 be changed when it is needed.
 
-include::Demystifying_the_event_loop.adoc[]
+include::Vertx_contexts.adoc[]
 
 [[integrating-netty]]
 include::Integrating_Netty.adoc[]
