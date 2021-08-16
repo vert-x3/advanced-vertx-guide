@@ -2,29 +2,35 @@
 
 Close hooks is an internal feature of Vert.x useful for creating components that are notified when a `Verticle`
  or a `Vertx` instance is closed. It can be used for implementing _automatic clean-up in verticles_
- feature, like for a Vert.x http server.
+ feature, like for a Vert.x HTTP server.
 
 The contract for receving a close notification is defined by the `io.vertx.core.Closeable` interface and
-its `close(Handler<AsyncResult<Void>> completionHandler)` method:
+its `close(Promise<Void> closePromise)` method:
 
 [source,java]
 ----
-{@link org.vietj.vertx.closehooks.ContextCloseHook}
+@Override
+public void close(Promise<Void> completion) {
+  // Do cleanup, the method will complete the future
+   doClose(completion);
+}
 ----
 
 A `Closeable` instance can be registered to receive a close hook with the method
-The method `Context#addCloseHook` registers a `Closeable` instance to be notified when the context closes:
+
+The method `ContextInternal#addCloseHook` registers a `Closeable` instance to be notified when the context closes:
 
 [source,java]
 ----
 context.addCloseHook(closeable);
 ----
 
-This is only valid for Verticles, when a Verticle is undeployed, its associated context is closed and
-the shutdown hooks are processed.
+Context created by a Verticle deployment signals calls the hook when the verticle instance is destroyed.
 
-The component should still expose a `close` in its API to allow the user to close explicitly the resource, this
- method should call `Context#removeCloseHook` to remove the hook.
+Otherwise the call hook is called when the Vertx instance is closed.
+
+The method `Context#removeCloseHook` unregisters the close hook and shall be used when the resource is closed before
+the close hook is called.
 
 [source,java]
 ----

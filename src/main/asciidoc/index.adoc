@@ -28,5 +28,3 @@ include::Vertx_contexts.adoc[]
 include::Integrating_Netty.adoc[]
 
 include::Using_Netty_codecs.adoc[]
-
-include::Close_hooks.adoc[]
