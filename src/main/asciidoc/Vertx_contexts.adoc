@@ -150,55 +150,6 @@ sequentially - one after the other - but different actions may be executed on di
 
 todo
 
-=== Contexts and tracing
-
-Since Vert.x 4, Vert.x integrates with popular distributing tracing systems.
-
-Tracing libraries usually rely on https://en.wikipedia.org/wiki/Thread-local_storage[thread local storage] to
-propagate tracing data, e.g a trace received when processing an HTTP request should be propagated throughout the
-HTTP client.
-
-Vert.x integrates tracing in a similar fashion but relies on contexts instead of thread local. Contexts are indeed
-propagated by Vert.x APIs and therefore offers a reliable storage for implementing tracing.
-
-Since all HTTP requests processed by a given server use the same context that created the HTTP server, the server context
-is _duplicated_ for each HTTP request, to grant unicity to each HTTP request.
-
-[source,java]
-----
-public class MyVerticle extends AbstractVerticle {
-  public void start() {
-    vertx.createHttpServer()
-      .requestHandler(request -> {
-        // Executed in a duplicate verticle context
-      })
-      .listen(8080, "localhost");
-  }
-}
-----
-
-Duplication shares most of the characteristics of the original context and provides a specific local storage.
-
-[source,java]
-----
-vertx.createHttpServer()
-  .requestHandler(request -> {
-    JsonObject specificRequestData = getRequestData(request);
-    Context context = vertx.getOrCreateContext();
-    context.putLocal("my-stuff", specificRequestData);
-    processRequest(request);
-  })
-  .listen(8080, "localhost");
-----
-
-Later the application can use it:
-
-[source,java]
-----
-Context context = vertx.getOrCreateContext();
-JsonObject specificRequestData = context.getLocal("my-stuff");
-----
-
 === Dispatching events on a context
 
 The most common way to execute a piece of code is achieved with `runOnContext`. Although it is very suited for integrating
@@ -296,6 +247,55 @@ In addition, the API allows to create succeeded and failed futures:
 ----
 Future<String> succeeded = context.succeededFuture("OK usa");
 Future<String> failed = context.failedFuture("Oh sorry");
+----
+
+=== Contexts and tracing
+
+Since Vert.x 4, Vert.x integrates with popular distributing tracing systems.
+
+Tracing libraries usually rely on https://en.wikipedia.org/wiki/Thread-local_storage[thread local storage] to
+propagate tracing data, e.g a trace received when processing an HTTP request should be propagated throughout the
+HTTP client.
+
+Vert.x integrates tracing in a similar fashion but relies on contexts instead of thread local. Contexts are indeed
+propagated by Vert.x APIs and therefore offers a reliable storage for implementing tracing.
+
+Since all HTTP requests processed by a given server use the same context that created the HTTP server, the server context
+is _duplicated_ for each HTTP request, to grant unicity to each HTTP request.
+
+[source,java]
+----
+public class MyVerticle extends AbstractVerticle {
+  public void start() {
+    vertx.createHttpServer()
+      .requestHandler(request -> {
+        // Executed in a duplicate verticle context
+      })
+      .listen(8080, "localhost");
+  }
+}
+----
+
+Duplication shares most of the characteristics of the original context and provides a specific local storage.
+
+[source,java]
+----
+vertx.createHttpServer()
+  .requestHandler(request -> {
+    JsonObject specificRequestData = getRequestData(request);
+    Context context = vertx.getOrCreateContext();
+    context.putLocal("my-stuff", specificRequestData);
+    processRequest(request);
+  })
+  .listen(8080, "localhost");
+----
+
+Later the application can use it:
+
+[source,java]
+----
+Context context = vertx.getOrCreateContext();
+JsonObject specificRequestData = context.getLocal("my-stuff");
 ----
 
 === Close hooks
