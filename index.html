@@ -1721,7 +1721,7 @@ time result to the channel or close it.</p>
    *
    * @param port the server port
    * @param host the server host name
-   * @param resultHandler the asynchronous time result
+   * @return the result future
    */
   Future&lt;Long&gt; getTime(int port, String host);
 
@@ -2032,7 +2032,7 @@ MemcachedClient.connect(vertx, 11211, "localhost")
    * Get a cached entry.
    *
    * @param key the entry key
-   * @param completionHandler the handler called with the result
+   * @return the result future
    */
   Future&lt;@Nullable String&gt; get(String key);
 
@@ -2041,7 +2041,7 @@ MemcachedClient.connect(vertx, 11211, "localhost")
    *
    * @param key the entry key
    * @param value the entry value
-   * @param completionHandler the handler called with the result
+   * @return the result future
    */
   Future&lt;Void&gt; set(String key, String value);
 
@@ -2411,7 +2411,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-16 17:04:14 UTC
+Last updated 2021-08-16 17:14:40 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
