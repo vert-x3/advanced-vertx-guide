@@ -1359,9 +1359,9 @@ bootstrap.bind(socketAddress).addListener(new ChannelFutureListener() {
    *
    * @param port the server port
    * @param host the server host
-   * @param listenHandler the listen result handler
+   * @return the future completed when the socket is bound
    */
-  void listen(int port, String host, Handler&lt;AsyncResult&lt;Void&gt;&gt; listenHandler);
+  Future&lt;Void&gt; listen(int port, String host);
 
   /**
    * Close the time server.
@@ -1385,13 +1385,9 @@ server.requestHandler(time -&gt; {
 });
 
 // Start the server
-server.listen(8037, "0.0.0.0", ar -&gt; {
-  if (ar.succeeded()) {
-    System.out.println("Server started");
-  } else {
-    ar.cause().printStackTrace();
-  }
-});</code></pre>
+server.listen(8037, "0.0.0.0")
+    .onSuccess(v -&gt; System.out.println("Server started"))
+    .onFailure(err -&gt; err.printStackTrace());</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1467,9 +1463,9 @@ bindFuture.addListener(new ChannelFutureListener() {
       //
       if (future.isSuccess()) {
         channel = future.channel();
-        listenHandler.handle(Future.succeededFuture(null));
+        promise.complete();
       } else {
-        listenHandler.handle(Future.failedFuture(future.cause()));
+        promise.fail(future.cause());
       }
     });
   }
@@ -1853,39 +1849,20 @@ binary protocol described in this <a href="https://github.com/memcached/memcache
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Vertx vertx = Vertx.vertx();
 
-// Create the memcached client
-MemcachedClient.connect(vertx, 11211, "localhost", ar1 -&gt; {
-  if (ar1.succeeded()) {
+MemcachedClient.connect(vertx, 11211, "localhost")
+    .compose(client -&gt; {
+      System.out.println("connected");
 
-    // Connected to memcached
-    System.out.println("connected");
-
-    // Get the client
-    MemcachedClient client = ar1.result();
-
-    // Put a value
-    client.set("foo", "bar", ar2 -&gt; {
-      if (ar2.succeeded()) {
-
+      // Put a value
+      return client.set("foo", "bar").compose(v -&gt; {
         System.out.println("Put successful");
 
         // Now retrieve the same value
-        client.get("foo", ar3 -&gt; {
-          if (ar3.succeeded()) {
-            String res = ar3.result();
-            System.out.println("Get successful " + res + "");
-          } else {
-            ar3.cause().printStackTrace();
-          }
-        });
-      } else {
-        ar2.cause().printStackTrace();
-      }
-    });
-  } else {
-    ar1.cause().printStackTrace();
-  }
-});</code></pre>
+        return client.get("foo");
+      });
+    }).onSuccess(res -&gt; {
+      System.out.println("Get successful " + res + "");
+    }).onFailure(err -&gt; err.printStackTrace());</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1909,15 +1886,15 @@ MemcachedClient.connect(vertx, 11211, "localhost", ar1 -&gt; {
   /**
    * Connect to memcached, the {@code completionHandler} will get the {@link MemcachedClient} instance.
    */
-  static void connect(Vertx vertx, int port, String host, Handler&lt;AsyncResult&lt;MemcachedClient&gt;&gt; completionHandler) {
-    MemcachedClientImpl.connect(vertx, port, host, null, completionHandler);
+  static Future&lt;MemcachedClient&gt; connect(Vertx vertx, int port, String host) {
+    return MemcachedClientImpl.connect(vertx, port, host, null);
   }
 
   /**
    * Connect to memcached, the {@code completionHandler} will get the {@link MemcachedClient} instance.
    */
-  static void connect(Vertx vertx, int port, String host, NetClientOptions options, Handler&lt;AsyncResult&lt;MemcachedClient&gt;&gt; completionHandler) {
-    MemcachedClientImpl.connect(vertx, port, host, options, completionHandler);
+  static Future&lt;MemcachedClient&gt; connect(Vertx vertx, int port, String host, NetClientOptions options) {
+    return MemcachedClientImpl.connect(vertx, port, host, options);
   }
 
   /**
@@ -1926,7 +1903,7 @@ MemcachedClient.connect(vertx, 11211, "localhost", ar1 -&gt; {
    * @param key the entry key
    * @param completionHandler the handler called with the result
    */
-  void get(String key, Handler&lt;AsyncResult&lt;@Nullable String&gt;&gt; completionHandler);
+  Future&lt;@Nullable String&gt; get(String key);
 
   /**
    * Set a cached entry.
@@ -1935,7 +1912,7 @@ MemcachedClient.connect(vertx, 11211, "localhost", ar1 -&gt; {
    * @param value the entry value
    * @param completionHandler the handler called with the result
    */
-  void set(String key, String value, Handler&lt;AsyncResult&lt;Void&gt;&gt; completionHandler);
+  Future&lt;Void&gt; set(String key, String value);
 
 }</code></pre>
 </div>
@@ -2007,25 +1984,18 @@ is just to be a demonstration and not a complete client
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">NetClient client = options != null ? vertx.createNetClient(options) : vertx.createNetClient();
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">NetClient tcpClient = options != null ? vertx.createNetClient(options) : vertx.createNetClient();
 
 // Connect to the memcached instance
-client.connect(port, host, ar -&gt; {
-  if (ar.succeeded()) {
-    // Get the socket
-    NetSocketInternal so = (NetSocketInternal) ar.result();
+Future&lt;NetSocket&gt; connect = tcpClient.connect(port, host);
+return connect.map(so -&gt; {
+  // Create the client
+  MemcachedClientImpl memcachedClient = new MemcachedClientImpl((VertxInternal) vertx, (NetSocketInternal) so);
 
-    // Create the client
-    MemcachedClientImpl memcachedClient = new MemcachedClientImpl(so);
+  // Initialize the client: configure the pipeline and set the handlers
+  memcachedClient.init();
 
-    // Initialize the client: configure the pipeline and set the handlers
-    memcachedClient.init();
-
-    // Return the memcached instance to the client
-    completionHandler.handle(Future.succeededFuture(memcachedClient));
-  } else {
-    completionHandler.handle(Future.failedFuture(ar.cause()));
-  }
+  return memcachedClient;
 });</code></pre>
 </div>
 </div>
@@ -2116,16 +2086,15 @@ the handler is dequeued and can process the response.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">so.writeMessage(request, ar -&gt; {
-  if (ar.succeeded()) {
-    // The message has been encoded succesfully and sent
-    // we add the handler to the inflight queue
-    inflight.add(completionHandler);
-  } else {
-    // The message could not be encoded or sent
-    // we signal an error
-    completionHandler.handle(Future.failedFuture(ar.cause()));
-  }
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">return so.writeMessage(request).compose(v -&gt; {
+
+  // The message has been encoded successfully and sent
+  // Create a response promise and add it to the inflight queue, so it can be resolved by the server ack
+  Promise&lt;FullBinaryMemcacheResponse&gt; promise = vertx.promise();
+  inflight.add(promise);
+
+  //
+  return promise.future();
 });</code></pre>
 </div>
 </div>
@@ -2198,16 +2167,8 @@ FullBinaryMemcacheRequest request = new DefaultFullBinaryMemcacheRequest(keyBuf,
 // Set the memcached operation opcode to perform a GET
 request.setOpcode(BinaryMemcacheOpcodes.GET);
 
-// Execute the request
-writeRequest(request, ar -&gt; {
-  if (ar.succeeded()) {
-    // Get the response
-    processGetResponse(ar.result(), completionHandler);
-  } else {
-    // Network error
-    completionHandler.handle(Future.failedFuture(ar.cause()));
-  }
-});</code></pre>
+// Execute the request and process the response
+return writeRequest(request).map(response -&gt; processGetResponse(response));</code></pre>
 </div>
 </div>
 </div>
@@ -2223,19 +2184,15 @@ switch (status) {
 
   case 0:
     // Succesfull get
-    String value = response.content().toString(StandardCharsets.UTF_8);
-    completionHandler.handle(Future.succeededFuture(value));
-    break;
+    return response.content().toString(StandardCharsets.UTF_8);
 
   case 1:
     // Empty response -&gt; null
-    completionHandler.handle(Future.succeededFuture());
-    break;
+    return null;
 
   default:
     // Memcached error
-    completionHandler.handle(Future.failedFuture(new MemcachedError(status)));
-    break;
+    throw new MemcachedError(status);
 }</code></pre>
 </div>
 </div>
@@ -2295,16 +2252,8 @@ FullBinaryMemcacheRequest request = new DefaultFullBinaryMemcacheRequest(keyBuf,
 // Set the memcached operation opcode to perform a GET
 request.setOpcode(BinaryMemcacheOpcodes.GET);
 
-// Execute the request
-writeRequest(request, ar -&gt; {
-  if (ar.succeeded()) {
-    // Get the response
-    processGetResponse(ar.result(), completionHandler);
-  } else {
-    // Network error
-    completionHandler.handle(Future.failedFuture(ar.cause()));
-  }
-});</code></pre>
+// Execute the request and process the response
+return writeRequest(request).map(response -&gt; processGetResponse(response));</code></pre>
 </div>
 </div>
 </div>
@@ -2318,10 +2267,10 @@ writeRequest(request, ar -&gt; {
 <pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">short status = response.status();
 if (status == 0) {
   // Succesfull get
-  completionHandler.handle(Future.succeededFuture());
+  return null;
 } else {
   // Memcached error
-  completionHandler.handle(Future.failedFuture(new MemcachedError(status)));
+  throw new MemcachedError(status);
 }</code></pre>
 </div>
 </div>
@@ -2331,7 +2280,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-16 13:23:30 UTC
+Last updated 2021-08-16 14:30:05 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
