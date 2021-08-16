@@ -5,32 +5,28 @@ import io.vertx.core.Closeable;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.ContextInternal;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class ContextCloseHook implements Closeable {
 
-  private final Context context;
+  private final ContextInternal context;
 
   public ContextCloseHook(Vertx vertx) {
-    this.context = vertx.getOrCreateContext();
+    this.context = (ContextInternal) vertx.getOrCreateContext();
 
     // Get notified when this context closes
     context.addCloseHook(this);
   }
 
   @Override
-  public void close(Handler<AsyncResult<Void>> completionHandler) {
-    // Create a new future
-    Future<Void> fut = Future.future();
-
-    // Set the close handler to be notified when the future resolves
-    fut.setHandler(completionHandler);
-
+  public void close(Promise<Void> completion) {
     // Do cleanup, the method will complete the future
-    doClose(fut);
+    doClose(completion);
   }
 
   /**
@@ -42,10 +38,10 @@ public class ContextCloseHook implements Closeable {
     context.removeCloseHook(this);
 
     // Do cleanup, the method will complete the future
-    doClose(Future.future());
+    doClose(Promise.promise());
   }
 
-  private void doClose(Future<Void> fut) {
+  private void doClose(Promise<Void> fut) {
 
     // No-op, in reality it would be a resource like a Netty channel, a file, etc...
     fut.complete();

@@ -67,7 +67,7 @@ returns an `EventLoopGroup` for accepting connections on a server, it's typical 
 Now that we are more intimate with `ContextInternal`, let's look at how we can use it to handle Netty events such
 as network events, channel life cycle, etc...
 
-The `ContextInternal#executeFromIO` methods is used to dispatch events to the application as it ensures:
+The `ContextInternal#dispatch` methods is used to dispatch events to the application as it ensures:
 
 - the context concurrency: reuse the current event-loop thread or execute on a worker
 - the thread local association of the current context with the dispatch thread
@@ -80,7 +80,7 @@ Here is a short example showing a server bootstrap
 {@link org.vietj.vertx.internals.Internals#executeFromIO}
 ----
 
-Typical usage of `executeFromIO`:
+Typical usage of `dispatch`:
 
 - listen handler
 - connect handler
@@ -141,10 +141,10 @@ example:
 ----
 {@link org.vietj.vertx.nettyserver.impl.TimeServerImpl#bind}
 ----
-<1> use executeFromIO to dispatch to the application
+<1> use `dispatch` to dispatch to the application
 <2> call the listen handler either with a success or a failure
 
-The most important part is that use `executeFromIO` to dispatch the result to the `listenHandler` in order
+The most important part is the use of the `dispatch` method to dispatch the result to the `listenHandler` in order
 to make the application aware of the bind result.
 
 === The server handler
@@ -156,14 +156,14 @@ original https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-8[`TimeServerHand
 ----
 {@link org.vietj.vertx.nettyserver.impl.TimeServerHandler#channelActive}
 ----
-<1> create a new blank future that will be resolved by the `requestHandler`
-<2> let the context dispatch to the `requestHandler` with `executeFromIO`
-<3> the future handler is called when the `requestHandler` implementation completes the future
+<1> create a new blank promise that will be resolved by the `requestHandler`
+<2> let the context dispatch to the `requestHandler` with `dispatch`
+<3> the future handler is called when the `requestHandler` implementation completes the associated promise
 <4> write the current TIME to the channel and close it after
 <5> the application failed we simply close the socket
 
-Again here,  `executeFromIO` is used when a TIME request event happens, the future to be completed is
-passed to the `requestHandler`. When this future is completed, the handler will either write the
+Again here, `dispatch` is used when a TIME request event happens, the promise to be completed is
+passed to the `requestHandler`. When this promise is completed, the handler will either write the
 time result to the channel or close it.
 
 === The client
@@ -213,9 +213,9 @@ called with the TIME request result.
 === The client connect
 
 The bootstrap setup is very similar to the original example, in case of a failure the application callback
-uses again `executeFromIO` for the same reason thatn before.
+uses again `dispatch` for the same reason thatn before.
 
-The `TimeClientHandler` integration uses also `executeFromIO` for calling back the application:
+The `TimeClientHandler` integration uses also `dispatch` for calling back the application:
 
 [source,java]
 ----
@@ -228,7 +228,7 @@ The `TimeClientHandler` integration uses also `executeFromIO` for calling back t
 We only care of propagating a connect failure to the application, when the bootstrap connects
 successfully, the `TimeServerHandler` will handle the network response to the application.
 
-When a connect failure happens, like in the server implementation, `executeFromIO` is used to dispatch the
+When a connect failure happens, like in the server implementation, `dispatch` is used to dispatch the
 failure to the `resultHandler` in order to make the application aware of the connect error.
 
 === The client handler
@@ -241,8 +241,8 @@ original https://netty.io/wiki/user-guide-for-4.x.html#wiki-h3-9[`TimeClientHand
 {@link org.vietj.vertx.nettyclient.impl.TimeClientHandler#channelRead}
 ----
 <1> decode the time response from the server
-<2> let the context dispatch the result to the `resultHandler` with `executeFromIO`
+<2> let the context dispatch the result to the `resultHandler` with `dispatch`
 <3> set the `resultHandler` to `null`
 <4> close the channel
 
-Again here, `executeFromIO` is used when a TIME response event happens to dispatch the result to the `resultHandler`
+Again here, `dispatch` is used when a TIME response event happens to dispatch the result to the `resultHandler`

@@ -1,8 +1,8 @@
 package org.vietj.vertx.nettyserver;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import org.vietj.vertx.nettyserver.impl.TimeServerImpl;
 
@@ -22,7 +22,7 @@ public interface TimeServer {
    * @param handler the handler to be called
    * @return this object
    */
-  TimeServer requestHandler(Handler<Future<Long>> handler);
+  TimeServer requestHandler(Handler<Promise<Long>> handler);
 
   /**
    * Start and bind the time server.

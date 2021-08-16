@@ -9,9 +9,9 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.impl.NetSocketInternal;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetClientOptions;
+import io.vertx.core.net.impl.NetSocketInternal;
 import org.vietj.vertx.memcached.MemcachedClient;
 import org.vietj.vertx.memcached.MemcachedError;
 

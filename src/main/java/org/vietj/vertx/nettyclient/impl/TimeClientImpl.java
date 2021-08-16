@@ -65,7 +65,7 @@ public class TimeClientImpl implements TimeClient {
       @Override
       public void operationComplete(ChannelFuture future) throws Exception {
         if (!future.isSuccess()) { // <2>
-          context.executeFromIO(v -> { // <3>
+          context.dispatch(v -> { // <3>
             resultHandler.handle(io.vertx.core.Future.failedFuture(future.cause()));
           });
         }

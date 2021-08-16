@@ -7,6 +7,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.impl.ContextInternal;
 
 /**
@@ -15,9 +16,9 @@ import io.vertx.core.impl.ContextInternal;
 public class TimeServerHandler extends ChannelInboundHandlerAdapter {
 
   private ContextInternal context;
-  private Handler<Future<Long>> requestHandler;
+  private Handler<Promise<Long>> requestHandler;
 
-  public TimeServerHandler(ContextInternal context, Handler<Future<Long>> requestHandler) {
+  public TimeServerHandler(ContextInternal context, Handler<Promise<Long>> requestHandler) {
     this.context = context;
     this.requestHandler = requestHandler;
   }
@@ -25,11 +26,11 @@ public class TimeServerHandler extends ChannelInboundHandlerAdapter {
   @Override
   public void channelActive(final ChannelHandlerContext ctx) {
 
-    Future<Long> result = Future.future(); // <1>
+    Promise<Long> result = Promise.promise(); // <1>
 
-    context.executeFromIO(result, requestHandler); // <2>
+    context.dispatch(result, requestHandler); // <2>
 
-    result.setHandler(ar -> { // <3>
+    result.future().onComplete(ar -> { // <3>
       if (ar.succeeded()) {  // <4>
         ByteBuf time = ctx.alloc().buffer(4);
         time.writeInt((int) (ar.result() / 1000L + 2208988800L));

@@ -12,6 +12,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.impl.VertxInternal;
@@ -20,7 +21,7 @@ import org.vietj.vertx.nettyserver.TimeServer;
 public class TimeServerImpl implements TimeServer {
 
   private final VertxInternal vertx;
-  private Handler<Future<Long>> requestHandler;
+  private Handler<Promise<Long>> requestHandler;
   private ServerBootstrap bootstrap;
   private Channel channel;
   private ContextInternal context;
@@ -30,7 +31,7 @@ public class TimeServerImpl implements TimeServer {
   }
 
   @Override
-  public TimeServer requestHandler(Handler<Future<Long>> handler) {
+  public TimeServer requestHandler(Handler<Promise<Long>> handler) {
     requestHandler = handler;
     return this;
   }
@@ -73,7 +74,7 @@ public class TimeServerImpl implements TimeServer {
     bindFuture.addListener(new ChannelFutureListener() {
       @Override
       public void operationComplete(ChannelFuture future) {
-        context.executeFromIO(v -> { // <1>
+        context.dispatch(v -> { // <1>
 
           //
           if (future.isSuccess()) {

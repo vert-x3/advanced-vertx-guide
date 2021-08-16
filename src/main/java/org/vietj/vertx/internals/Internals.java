@@ -66,7 +66,7 @@ public class Internals {
       @Override
       public void operationComplete(ChannelFuture future) throws Exception {
         // <2>
-        context.executeFromIO(future, bindHandler);
+        context.dispatch(future, bindHandler);
       }
     });
   }
