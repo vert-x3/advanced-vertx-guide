@@ -199,9 +199,7 @@ Context context = vertx.getOrCreateContext();
 JsonObject specificRequestData = context.getLocal("my-stuff");
 ----
 
-=== Context internals
-
-==== Close hooks
+=== Close hooks
 
 Close hooks is an internal feature of Vert.x useful for creating components that are notified when a `Verticle`
 or a `Vertx` instance is closed. It can be used for implementing _automatic clean-up in verticles_
