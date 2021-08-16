@@ -31,7 +31,7 @@ public interface MemcachedClient {
    * Get a cached entry.
    *
    * @param key the entry key
-   * @param completionHandler the handler called with the result
+   * @return the result future
    */
   Future<@Nullable String> get(String key);
 
@@ -40,7 +40,7 @@ public interface MemcachedClient {
    *
    * @param key the entry key
    * @param value the entry value
-   * @param completionHandler the handler called with the result
+   * @return the result future
    */
   Future<Void> set(String key, String value);
 

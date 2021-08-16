@@ -20,7 +20,7 @@ public interface TimeClient {
    *
    * @param port the server port
    * @param host the server host name
-   * @param resultHandler the asynchronous time result
+   * @return the result future
    */
   Future<Long> getTime(int port, String host);
 
