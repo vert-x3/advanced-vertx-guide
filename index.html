@@ -1032,7 +1032,7 @@ with application code.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">assertNull(context, Vertx.currentContext());
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">assertNull(Vertx.currentContext());
 context.dispatch(event, evt -&gt; {
  assertSame(context, Vertx.currentContext());
 });</code></pre>
@@ -2411,7 +2411,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-16 17:14:40 UTC
+Last updated 2021-08-16 18:13:45 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
