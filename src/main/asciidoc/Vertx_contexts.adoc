@@ -26,7 +26,7 @@ When `MyVerticle` is deployed, Vert.x emits a _start_ event, the `start` method 
 - by default the context is always an event-loop context, the caller thread is an event-loop
 - when the verticle is deployed as a worker the caller thread is one of the worker pool of Vert.x
 
-=== Adhoc contexts
+=== Ad hoc contexts
 
 Using Vert.x APIs without using Verticle is supported since Vert.x 3 and leads to the interesting question of
 which context is used. When a Vert.x API is called, Vert.x associates the current thread with an ad hoc context.
