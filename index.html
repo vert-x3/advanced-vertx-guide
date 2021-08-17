@@ -1225,6 +1225,18 @@ is <em>duplicated</em> for each HTTP request, to grant unicity to each HTTP requ
 JsonObject specificRequestData = context.getLocal("my-stuff");</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p><code>ContextInternal#duplicate()</code> duplicates the current context, it can be used to scope an activity associated with
+a trace</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public void startProcessing(Request request) {
+ Context duplicate = context.duplicate();
+ request.setContext(duplicate);
+}</code></pre>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_close-hooks">Close hooks</h3>
@@ -1247,9 +1259,6 @@ public void close(Promise&lt;Void&gt; completion) {
 </div>
 </div>
 <div class="paragraph">
-<p>A <code>Closeable</code> instance can be registered to receive a close hook with the method</p>
-</div>
-<div class="paragraph">
 <p>The method <code>ContextInternal#addCloseHook</code> registers a <code>Closeable</code> instance to be notified when the context closes:</p>
 </div>
 <div class="listingblock">
@@ -1258,14 +1267,13 @@ public void close(Promise&lt;Void&gt; completion) {
 </div>
 </div>
 <div class="paragraph">
-<p>Context created by a Verticle deployment signals calls the hook when the verticle instance is destroyed.</p>
+<p>A context created by a Verticle deployment calls the hook when the verticle instance is stopped.</p>
 </div>
 <div class="paragraph">
-<p>Otherwise the call hook is called when the Vertx instance is closed.</p>
+<p>Otherwise, the hook is called when the Vertx instance is closed.</p>
 </div>
 <div class="paragraph">
-<p>The method <code>Context#removeCloseHook</code> unregisters the close hook and shall be used when the resource is closed before
-the close hook is called.</p>
+<p><code>Context#removeCloseHook</code> unregisters the close hook and shall be used when the resource is closed before the close hook is called.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1273,7 +1281,13 @@ the close hook is called.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Likewise <code>VertxInternal</code> provides the same operation to receive notifications when a <code>Vertx</code> instance is closed.</p>
+<p>Hooks are implemented with weak references to avoid leaks, nevertheless unregistering hooks should be done.</p>
+</div>
+<div class="paragraph">
+<p>Adding a hook on a duplicate context, adds the hook to the original context.</p>
+</div>
+<div class="paragraph">
+<p>Likewise <code>VertxInternal</code> expose also the same operations to receive notifications when a <code>Vertx</code> instance is closed.</p>
 </div>
 </div>
 </div>
@@ -2436,7 +2450,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-17 06:56:58 UTC
+Last updated 2021-08-17 07:12:48 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
