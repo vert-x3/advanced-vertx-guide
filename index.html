@@ -999,18 +999,43 @@ sequentially - one after the other - but different actions may be executed on di
 <div class="sect2">
 <h3 id="_context-exception-handler">Context exception handler</h3>
 <div class="paragraph">
-<p>todo</p>
+<p>An exception handler can be set on a context, to catch any unchecked exception thrown by task running on a context.</p>
+</div>
+<div class="paragraph">
+<p>When no exception handler is set, the <code>Vertx</code> exception handler is called instead</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">context.exceptionHandler(throwable -&gt; {
+ // Any exception thrown by this context
+});
+
+vertx.exceptionHandler(throwable -&gt; {
+ // Any exception uncaught exception thrown on context
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When no handler is set whatsoever, the exception is logged as an error with the message <em>Unhandled exception</em></p>
+</div>
+<div class="paragraph">
+<p>You can report an exception on a context with <code>reportException</code></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">context.reportException(new Exception());</code></pre>
+</div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_firing-events">Firing events</h3>
 <div class="paragraph">
-<p>The most common way to execute a piece of code is achieved with <code>runOnContext</code>. Although it is very suited for integrating
-non Vert.x systems with Vert.x, it is not the best fit to integrate code executing at the event-loop level (such as Netty)
+<p><code>runOnContext</code> is the most common way to execute a piece of code on a context. Although it is very suited for integrating
+external libraries with Vert.x, it is not always the best fit to integrate code executing at the event-loop level (such as Netty events)
 with application code.</p>
 </div>
 <div class="paragraph">
-<p>There are internal methods to achieve similar behaviors depending on the situation</p>
+<p>There are internal methods that achieve similar behaviors depending on the situation</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1042,7 +1067,7 @@ context.dispatch(event, evt -&gt; {
 <p>The handler is also monitored by the blocked thread checker.</p>
 </div>
 <div class="paragraph">
-<p>Finally, any exception thrown by the handler will be reported to the context:</p>
+<p>Finally, any exception thrown by the handler is reported to the context:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1058,8 +1083,8 @@ context.dispatch(event, evt -&gt; {
 <div class="sect3">
 <h4 id="_execute">Execute</h4>
 <div class="paragraph">
-<p><code>execute</code> executes a task on the context, when the caller thread is already a context thread, the task is executed directly
-with no trampolining, otherwise a task is scheduled for execution.</p>
+<p><code>execute</code> executes a task on the context, when the caller thread is already a context thread, the task is executed directly, otherwise
+a task is scheduled for execution.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -1087,7 +1112,7 @@ no context associated is done
 </div>
 </div>
 <div class="paragraph">
-<p><code>emit</code> can be used from any thread to emit an event to a handler:</p>
+<p><code>emit</code> can be used from any thread to fire an event to a handler:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1095,7 +1120,7 @@ no context associated is done
 <p>from any thread, it behaves like <code>runOnContext</code></p>
 </li>
 <li>
-<p>from the context thread, it runs the event handler with the context thread local association, the block thread checker and reports failures on the context</p>
+<p>from a context thread, it runs the event handler with the context thread local association, the block thread checker and reports failures on the context</p>
 </li>
 </ul>
 </div>
@@ -2411,7 +2436,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-17 06:28:56 UTC
+Last updated 2021-08-17 06:56:58 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
