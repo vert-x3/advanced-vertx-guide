@@ -696,7 +696,7 @@ table.tableblock.grid-all > tbody > tr { border-bottom: 1px solid #d8d8d8; }
 <li><a href="#_event-loop-context">Event-loop context</a></li>
 <li><a href="#_worker-context">Worker context</a></li>
 <li><a href="#_context-exception-handler">Context exception handler</a></li>
-<li><a href="#_dispatching-events-on-a-context">Dispatching events on a context</a></li>
+<li><a href="#_firing-events">Firing events</a></li>
 <li><a href="#_context-aware-futures">Context aware futures</a></li>
 <li><a href="#_contexts-and-tracing">Contexts and tracing</a></li>
 <li><a href="#_close-hooks">Close hooks</a></li>
@@ -1003,7 +1003,7 @@ sequentially - one after the other - but different actions may be executed on di
 </div>
 </div>
 <div class="sect2">
-<h3 id="_dispatching-events-on-a-context">Dispatching events on a context</h3>
+<h3 id="_firing-events">Firing events</h3>
 <div class="paragraph">
 <p>The most common way to execute a piece of code is achieved with <code>runOnContext</code>. Although it is very suited for integrating
 non Vert.x systems with Vert.x, it is not the best fit to integrate code executing at the event-loop level (such as Netty)
@@ -2411,7 +2411,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-17 06:28:03 UTC
+Last updated 2021-08-17 06:28:56 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
