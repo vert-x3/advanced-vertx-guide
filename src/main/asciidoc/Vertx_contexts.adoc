@@ -320,6 +320,17 @@ Context context = vertx.getOrCreateContext();
 JsonObject specificRequestData = context.getLocal("my-stuff");
 ----
 
+`ContextInternal#duplicate()` duplicates the current context, it can be used to scope an activity associated with
+a trace
+
+[source,java]
+----
+public void startProcessing(Request request) {
+  Context duplicate = context.duplicate();
+  request.setContext(duplicate);
+}
+----
+
 === Close hooks
 
 Close hooks is an internal feature of Vert.x useful for creating components that are notified when a `Verticle`
