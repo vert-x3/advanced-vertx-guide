@@ -150,7 +150,7 @@ sequentially - one after the other - but different actions may be executed on di
 
 todo
 
-=== Dispatching events on a context
+=== Firing events
 
 The most common way to execute a piece of code is achieved with `runOnContext`. Although it is very suited for integrating
 non Vert.x systems with Vert.x, it is not the best fit to integrate code executing at the event-loop level (such as Netty)
