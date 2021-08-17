@@ -152,11 +152,11 @@ todo
 
 === Firing events
 
-The most common way to execute a piece of code is achieved with `runOnContext`. Although it is very suited for integrating
-non Vert.x systems with Vert.x, it is not the best fit to integrate code executing at the event-loop level (such as Netty)
+`runOnContext` is the most common way to execute a piece of code on a context. Although it is very suited for integrating
+external libraries with Vert.x, it is not always the best fit to integrate code executing at the event-loop level (such as Netty events)
 with application code.
 
-There are internal methods to achieve similar behaviors depending on the situation
+There are internal methods that achieve similar behaviors depending on the situation
 
 - `ContextInternal#dispatch(E, Handler<E>)`
 - `ContextInternal#execute(E, Handler<E>)`
@@ -176,7 +176,7 @@ context.dispatch(event, evt -> {
 
 The handler is also monitored by the blocked thread checker.
 
-Finally, any exception thrown by the handler will be reported to the context:
+Finally, any exception thrown by the handler is reported to the context:
 
 [source,java]
 ----
@@ -190,8 +190,8 @@ context.dispatch(event, evt -> {
 
 ==== Execute
 
-`execute` executes a task on the context, when the caller thread is already a context thread, the task is executed directly
-with no trampolining, otherwise a task is scheduled for execution.
+`execute` executes a task on the context, when the caller thread is already a context thread, the task is executed directly, otherwise
+a task is scheduled for execution.
 
 NOTE: no context associated is done
 
@@ -206,10 +206,10 @@ default void emit(E event, Handler<E> eventHandler) {
 }
 ----
 
-`emit` can be used from any thread to emit an event to a handler:
+`emit` can be used from any thread to fire an event to a handler:
 
 - from any thread, it behaves like `runOnContext`
-- from the context thread, it runs the event handler with the context thread local association, the block thread checker and reports failures on the context
+- from a context thread, it runs the event handler with the context thread local association, the block thread checker and reports failures on the context
 
 In most situations, the `emit` method is the way to go to have an application process an event. The main purpose of `dispatch`
 and `execute` methods is to give more control to the code to achieve very specific things.
