@@ -689,9 +689,9 @@ table.tableblock.grid-all > tbody > tr { border-bottom: 1px solid #d8d8d8; }
 <ul class="sectlevel1">
 <li><a href="#_contexts-in-vert-x">Contexts in Vert.x</a>
 <ul class="sectlevel2">
-<li><a href="#_verticles">Verticles</a></li>
-<li><a href="#_propagation-of-contexts">Propagation of contexts</a></li>
+<li><a href="#_verticle-contexts">Verticle contexts</a></li>
 <li><a href="#_adhoc-contexts">Adhoc contexts</a></li>
+<li><a href="#_propagation-of-contexts">Propagation of contexts</a></li>
 <li><a href="#_dealing-with-contexts">Dealing with contexts</a></li>
 <li><a href="#_event-loop-context">Event-loop context</a></li>
 <li><a href="#_worker-context">Worker context</a></li>
@@ -809,7 +809,7 @@ be changed when it is needed.
 the dispatch of the event.</p>
 </div>
 <div class="sect2">
-<h3 id="_verticles">Verticles</h3>
+<h3 id="_verticle-contexts">Verticle contexts</h3>
 <div class="paragraph">
 <p>When an instance of a verticle is deployed, Vert.x creates and associates a context with this instance. You can access
 this context in your verticle using the <code>context</code> field of <code>AbstractVerticle</code>:</p>
@@ -835,35 +835,6 @@ this context in your verticle using the <code>context</code> field of <code>Abst
 <p>when the verticle is deployed as a worker the caller thread is one of the worker pool of Vert.x</p>
 </li>
 </ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_propagation-of-contexts">Propagation of contexts</h3>
-<div class="paragraph">
-<p>Most Vert.x APIs are aware of contexts.</p>
-</div>
-<div class="paragraph">
-<p>Asynchronous operations executed within a context will call back the application with the same context.</p>
-</div>
-<div class="paragraph">
-<p>Likewise, event handlers are also dispatched on the same context.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class MyVerticle extends AbstractVerticle {
- public void start() {
-   Future&lt;HttpServer&gt; future = vertx.createHttpServer()
-     .requestHandler(request -&gt; {
-       // Executed in the verticle context
-     })
-     .listen(8080, "localhost");
-
-   future.onComplete(ar -&gt; {
-      // Executed in the verticle context
-   });
- }
-}</code></pre>
-</div>
 </div>
 </div>
 <div class="sect2">
@@ -901,6 +872,35 @@ this behavior differs from previous major versions, Vert.x 3 would create a diff
 </td>
 </tr>
 </table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_propagation-of-contexts">Propagation of contexts</h3>
+<div class="paragraph">
+<p>Most Vert.x APIs are aware of contexts.</p>
+</div>
+<div class="paragraph">
+<p>Asynchronous operations executed within a context will call back the application with the same context.</p>
+</div>
+<div class="paragraph">
+<p>Likewise, event handlers are also dispatched on the same context.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class MyVerticle extends AbstractVerticle {
+ public void start() {
+   Future&lt;HttpServer&gt; future = vertx.createHttpServer()
+     .requestHandler(request -&gt; {
+       // Executed in the verticle context
+     })
+     .listen(8080, "localhost");
+
+   future.onComplete(ar -&gt; {
+      // Executed in the verticle context
+   });
+ }
+}</code></pre>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -2411,7 +2411,7 @@ if (status == 0) {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-08-16 18:13:45 UTC
+Last updated 2021-08-17 06:27:31 UTC
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/tomorrow-night-eighties.min.css">
