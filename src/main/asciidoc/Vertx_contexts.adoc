@@ -148,7 +148,29 @@ sequentially - one after the other - but different actions may be executed on di
 
 === Context exception handler
 
-todo
+An exception handler can be set on a context, to catch any unchecked exception thrown by task running on a context.
+
+When no exception handler is set, the `Vertx` exception handler is called instead
+
+[source,java]
+----
+context.exceptionHandler(throwable -> {
+  // Any exception thrown by this context
+});
+
+vertx.exceptionHandler(throwable -> {
+  // Any exception uncaught exception thrown on context
+});
+----
+
+When no handler is set whatsoever, the exception is logged as an error with the message _Unhandled exception_
+
+You can report an exception on a context with `reportException`
+
+[source,java]
+----
+context.reportException(new Exception());
+----
 
 === Firing events
 
