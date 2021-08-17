@@ -338,8 +338,6 @@ public void close(Promise<Void> completion) {
 }
 ----
 
-A `Closeable` instance can be registered to receive a close hook with the method
-
 The method `ContextInternal#addCloseHook` registers a `Closeable` instance to be notified when the context closes:
 
 [source,java]
@@ -347,17 +345,20 @@ The method `ContextInternal#addCloseHook` registers a `Closeable` instance to be
 context.addCloseHook(closeable);
 ----
 
-Context created by a Verticle deployment signals calls the hook when the verticle instance is destroyed.
+A context created by a Verticle deployment calls the hook when the verticle instance is stopped.
 
-Otherwise the call hook is called when the Vertx instance is closed.
+Otherwise, the hook is called when the Vertx instance is closed.
 
-The method `Context#removeCloseHook` unregisters the close hook and shall be used when the resource is closed before
-the close hook is called.
+`Context#removeCloseHook` unregisters the close hook and shall be used when the resource is closed before the close hook is called.
 
 [source,java]
 ----
 context.removeCloseHook(closeable);
 ----
 
-Likewise `VertxInternal` provides the same operation to receive notifications when a `Vertx` instance is closed.
+Hooks are implemented with weak references to avoid leaks, nevertheless unregistering hooks should be done.
+
+Adding a hook on a duplicate context, adds the hook to the original context.
+
+Likewise `VertxInternal` expose also the same operations to receive notifications when a `Vertx` instance is closed.
 
