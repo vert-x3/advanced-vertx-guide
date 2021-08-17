@@ -7,7 +7,7 @@ At a high level contexts can be thought of as controlling the execution of how e
 Most events are dispatched through contexts, when the application consumes an event there is most likely a context associated with
 the dispatch of the event.
 
-=== Verticles
+=== Verticle contexts
 
 When an instance of a verticle is deployed, Vert.x creates and associates a context with this instance. You can access
 this context in your verticle using the `context` field of `AbstractVerticle`:
@@ -25,31 +25,6 @@ When `MyVerticle` is deployed, Vert.x emits a _start_ event, the `start` method 
 
 - by default the context is always an event-loop context, the caller thread is an event-loop
 - when the verticle is deployed as a worker the caller thread is one of the worker pool of Vert.x
-
-=== Propagation of contexts
-
-Most Vert.x APIs are aware of contexts.
-
-Asynchronous operations executed within a context will call back the application with the same context.
-
-Likewise, event handlers are also dispatched on the same context.
-
-[source,java]
-----
-public class MyVerticle extends AbstractVerticle {
-  public void start() {
-    Future<HttpServer> future = vertx.createHttpServer()
-      .requestHandler(request -> {
-        // Executed in the verticle context
-      })
-      .listen(8080, "localhost");
-
-    future.onComplete(ar -> {
-       // Executed in the verticle context
-    });
-  }
-}
-----
 
 === Adhoc contexts
 
@@ -75,6 +50,31 @@ public class Main {
 ----
 
 NOTE: this behavior differs from previous major versions, Vert.x 3 would create a different context for each HTTP request.
+
+=== Propagation of contexts
+
+Most Vert.x APIs are aware of contexts.
+
+Asynchronous operations executed within a context will call back the application with the same context.
+
+Likewise, event handlers are also dispatched on the same context.
+
+[source,java]
+----
+public class MyVerticle extends AbstractVerticle {
+  public void start() {
+    Future<HttpServer> future = vertx.createHttpServer()
+      .requestHandler(request -> {
+        // Executed in the verticle context
+      })
+      .listen(8080, "localhost");
+
+    future.onComplete(ar -> {
+       // Executed in the verticle context
+    });
+  }
+}
+----
 
 === Dealing with contexts
 
