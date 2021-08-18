@@ -29,7 +29,13 @@ When `MyVerticle` is deployed, Vert.x emits a _start_ event, the `start` method 
 === Ad hoc contexts
 
 Using Vert.x APIs without using Verticle is supported since Vert.x 3 and leads to the interesting question of
-which context is used. When a Vert.x API is called, Vert.x associates the current thread with an ad hoc context.
+which context is used.
+
+When a Vert.x API is called, Vert.x associates the current thread with an ad hoc event-loop context,
+`Vertx#getOrCreateContext()` creates a context the first time it is called for a non vertx thread and then
+returns this context on subsequent calls.
+
+Consequently, callbacks on asynchronous Vert.x API happen on the same context:
 
 [source,java]
 ----
@@ -49,7 +55,9 @@ public class Main {
 }
 ----
 
-NOTE: this behavior differs from previous major versions, Vert.x 3 would create a different context for each HTTP request.
+This behavior differs from previous major versions, Vert.x 3 would create a different context for each HTTP request.
+
+While Vert.x does encourage confining code in context, such behavior avoids potential data races.
 
 === Propagation of contexts
 
