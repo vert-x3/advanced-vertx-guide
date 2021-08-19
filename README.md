@@ -5,7 +5,7 @@ This is a live guide that is improved over time, if you believe there is a missi
 It aims to document more advanced/internal about Vert.x as a guide.
 
 - 👓 [HTML](https://vert-x3.github.io/advanced-vertx-guide/index.html) version.
-- Could'nt find what you are looking for  ? 👊 [an issue](https://github.com/vert-x3/advanced-vertx-guide/issues)
+- 👊 [an issue](https://github.com/vert-x3/advanced-vertx-guide/issues)
 
 # Building the book
 
