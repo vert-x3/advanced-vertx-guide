@@ -1,16 +1,18 @@
-== Contexts in Vert.x
+== Contexts in Vert.x (Vert.x中的Contexts)
 
-The `io.vertx.core.Context` interface is an essential component of Vert.x.
+`io.vertx.core.Context` 接口是Vert.x的一个重要组件.
 
-At a high level contexts can be thought of as controlling the execution of how events (or tasks created by handlers) are executed by the application.
+往高处说，context(上下文)可以被认为是起着控制应用程序如何执行事件(或由handler创建的任务)的作用.
 
-Most events are dispatched through contexts, when the application consumes an event there is most likely a context associated with
-the dispatch of the event.
+大多数事件是通过上下文分派的，当应用程序使用事件时，很可能有一个关联的上下文事件的发送。
 
-=== Verticle contexts
+=== Verticle contexts(Verticel的上下文)
 
 When an instance of a verticle is deployed, Vert.x creates and associates a context with this instance. You can access
 this context in your verticle using the `context` field of `AbstractVerticle`:
+
+部署 Verticle 实例时，Vert.x会创建一个上下文并将其与该实例相关联。您可以通过使用 `AbstractVerticle` 的 `context` 字段在你的verticle中访问这个上下文。
+
 
 [source,java]
 ----
@@ -26,16 +28,29 @@ When `MyVerticle` is deployed, Vert.x emits a _start_ event, the `start` method 
 - by default the context is always an event-loop context, the caller thread is an event-loop
 - when the verticle is deployed as a worker the caller thread is one of the worker pool of Vert.x
 
-=== Ad hoc contexts
+当 `MyVerticle` 部署时，Vert.x 会发出一个 _start_ 事件，该 start 方法由 Verticle 上下文的线程调用:
+
+- 默认情况下，context是一个事件循环上下文，调用线程是一个事件循环
+- 当 Verticle 被部署为worker时，调用者是 Vert.x的worker线程池中的一个线程
+
+
+=== Ad hoc contexts(临时上下文)
 
 Using Vert.x APIs without using Verticle is supported since Vert.x 3 and leads to the interesting question of
 which context is used.
+
+从Vert.x 3 后支持在不使用 Verticle 的情况下使用 Vert.x API，这会导致一个有趣的问题-到底使用哪个上下文
 
 When a Vert.x API is called, Vert.x associates the current thread with an ad hoc event-loop context,
 `Vertx#getOrCreateContext()` creates a context the first time it is called for a non vertx thread and then
 returns this context on subsequent calls.
 
+当调用 Vert.x API 时，Vert.x 将当前线程与一个临时事件循环上下文相关联，
+`Vertx#getOrCreateContext()` 在第一次为非vertx 线程调用它时创建一个上下文，然后在后续调用中返回此上下文。
+
 Consequently, callbacks on asynchronous Vert.x API happen on the same context:
+
+因此，异步 Vert.x API 的回调发生在相同的上下文中:
 
 [source,java]
 ----
@@ -59,13 +74,22 @@ This behavior differs from previous major versions, Vert.x 3 would create a diff
 
 While Vert.x does encourage confining code in context, such behavior avoids potential data races.
 
-=== Propagation of contexts
+此行为与之前的主要版本不同，Vert.x 3 会为每个 HTTP 请求创建不同的上下文。
+虽然Vert.x建议限制在context中的代码操作，以上的行为避免了潜在的数据竞争。
+
+=== Propagation of contexts(上下文的传递)
 
 Most Vert.x APIs are aware of contexts.
 
 Asynchronous operations executed within a context will call back the application with the same context.
 
 Likewise, event handlers are also dispatched on the same context.
+
+大多数 Vert.x API 包含上下文的存在(可能这样翻译适合点？)。
+
+应用程序在上下文中执行的异步操作将回调相同的上下文。
+
+同样的，事件处理handler也在同一上下文中分派。
 
 [source,java]
 ----

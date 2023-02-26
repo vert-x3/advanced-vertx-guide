@@ -20,6 +20,26 @@ This is a live guide and you can contribute, just open a PR or an issue in the h
 WARNING: Some of the internal Vert.x APIs are exposed in this guide and you should keep in mind that these APIs are subject to
 be changed when it is needed.
 
+
+
+本指南文档介绍了Vert.x的高级/底层内容
+
+本文旨在解释和讨论以下内容
+
+- Vert.x 设计
+- 内部API
+- 与Netty集成
+
+当你阅读本指南时你将:
+
+- 更好地了解Vert.x底层
+- Vert.x与第三方库的集成
+- 使用Netty和Vert.x编写网络应用
+
+这是一个你可以实时贡献的指南, 在这个 https://github.com/vert-x3/advanced-vertx-guide[仓库] 提交PR或者issue吧 
+
+WARNING: 本指南中介绍了一些Vert.x的内部API，您应该记住:这些API仅仅在确实需要时进行更改。
+
 include::Vertx_contexts.adoc[]
 
 [[integrating-netty]]
