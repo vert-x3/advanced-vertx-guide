@@ -11,7 +11,7 @@
   </parent>
 
   <artifactId>advanced-vertx-guide</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0.0-SNAPSHOT</version>
 
   <properties>
     <stack.version>5.0.0-SNAPSHOT</stack.version>

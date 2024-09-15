@@ -1,0 +1,33 @@
+name: Publish
+on:
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      jdk:
+        default: 8
+        type: string
+jobs:
+  Deploy:
+    name: Publish to Pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ inputs.branch }}
+      - name: Install JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: ${{ inputs.jdk }}
+          distribution: temurin
+      - name: Maven deploy
+        run: mvn package asciidoctor:process-asciidoc
+      - name: Publish to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@3.7.1
+        with:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: target/docs/advanced-vertx-guide
+          CLEAN: true
