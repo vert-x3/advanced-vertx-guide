@@ -6,17 +6,15 @@
 
   <parent>
     <groupId>io.vertx</groupId>
-    <artifactId>vertx-parent</artifactId>
-    <version>14</version>
+    <artifactId>vertx5-parent</artifactId>
+    <version>4</version>
   </parent>
 
-  <groupId>com.julienviet</groupId>
   <artifactId>advanced-vertx-guide</artifactId>
   <version>1.0-SNAPSHOT</version>
 
   <properties>
-    <stack.version>4.1.2</stack.version>
-    <asciidoc.dir>${project.basedir}/src/main/asciidoc</asciidoc.dir>
+    <stack.version>5.0.0-SNAPSHOT</stack.version>
   </properties>
 
   <dependencyManagement>
@@ -38,14 +36,13 @@
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-codegen</artifactId>
-      <scope>provided</scope>
+      <artifactId>vertx-codegen-api</artifactId>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-docgen</artifactId>
-      <scope>provided</scope>
-      <version>0.9.2</version>
+      <artifactId>vertx-docgen-api</artifactId>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
@@ -55,79 +52,41 @@
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>default-compile</id>
+              <configuration>
+                <annotationProcessorPaths>
+                  <annotationProcessorPath>
+                    <groupId>io.vertx</groupId>
+                    <artifactId>vertx-codegen</artifactId>
+                    <classifier>processor</classifier>
+                  </annotationProcessorPath>
+                  <annotationProcessorPath>
+                    <groupId>io.vertx</groupId>
+                    <artifactId>vertx-docgen-processor</artifactId>
+                    <classifier>processor</classifier>
+                  </annotationProcessorPath>
+                </annotationProcessorPaths>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
       <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
+        <artifactId>maven-assembly-plugin</artifactId>
         <executions>
           <execution>
-            <id>default-compile</id>
-            <configuration>
-              <annotationProcessors>
-                <annotationProcessor>io.vertx.docgen.JavaDocGenProcessor</annotationProcessor>
-              </annotationProcessors>
-              <compilerArgs>
-                <arg>-Adocgen.output=${project.build.directory}/asciidoc</arg>
-                <arg>-Adocgen.source=${asciidoc.dir}</arg>
-              </compilerArgs>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>3.1.0</version>
-        <executions>
-          <execution>
-            <id>copy-resources</id>
-            <phase>process-classes</phase>
+            <id>package-docs</id>
             <goals>
-              <goal>copy-resources</goal>
+              <goal>single</goal>
             </goals>
-            <configuration>
-              <outputDirectory>${project.build.directory}/asciidoc</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${asciidoc.dir}</directory>
-                  <filtering>false</filtering>
-                  <excludes>
-                    <exclude>**/*.adoc</exclude>
-                  </excludes>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.asciidoctor</groupId>
-        <artifactId>asciidoctor-maven-plugin</artifactId>
-        <version>1.5.7.1</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>process-asciidoc</goal>
-            </goals>
-            <configuration>
-              <sourceDirectory>${project.build.directory}/asciidoc</sourceDirectory>
-              <outputDirectory>${project.build.directory}/docs/${project.artifactId}</outputDirectory>
-              <sourceHighlighter>highlightjs</sourceHighlighter>
-              <preserveDirectories>true</preserveDirectories>
-              <sourceDocumentName>index.adoc</sourceDocumentName>
-              <relativeBaseDir>true</relativeBaseDir>
-              <backend>html5</backend>
-              <doctype>book</doctype>
-              <attributes>
-                <toc>center</toc>
-                <icons>font</icons>
-                <idseparator>-</idseparator>
-                <docinfo1>true</docinfo1>
-                <stylesheet>iconic.css</stylesheet>
-                <stylesdir>${project.basedir}/src/main/stylesheets</stylesdir>
-                <!-- see https://highlightjs.org/static/demo/ -->
-                <highlightjs-theme>tomorrow-night-eighties</highlightjs-theme>
-              </attributes>
-            </configuration>
-            <phase>prepare-package</phase>
           </execution>
         </executions>
       </plugin>

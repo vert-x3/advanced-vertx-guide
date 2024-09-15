@@ -12,7 +12,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.impl.ContextInternal;
+import io.vertx.core.internal.ContextInternal;
 import org.vietj.vertx.nettyclient.TimeClient;
 
 public class TimeClientImpl implements TimeClient {

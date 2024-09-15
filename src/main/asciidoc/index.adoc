@@ -1,7 +1,7 @@
 = Advanced Vert.x Guide
 Julien Viet <julien@julienviet.com>
 
-This guide document advanced/internal stuff about Vert.x.
+This guide document advanced/internal stuff about Vert.x (5.0).
 
 It aims to explain and discuss the following
 
