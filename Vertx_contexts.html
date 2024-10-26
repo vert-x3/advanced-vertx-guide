@@ -569,9 +569,9 @@ this context in your verticle using the <code>context</code> field of <code>Abst
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="directive">public</span> <span class="type">class</span> <span class="class">MyVerticle</span> <span class="directive">extends</span> AbstractVerticle {
- <span class="directive">public</span> <span class="type">void</span> start() {
-   JsonObject config = context.config();
- }
+  <span class="directive">public</span> <span class="type">void</span> start() {
+    JsonObject config = context.config();
+  }
 }</code></pre>
 </div>
 </div>
@@ -606,18 +606,18 @@ returns this context on subsequent calls.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="directive">public</span> <span class="type">class</span> <span class="class">Main</span> {
- <span class="directive">public</span> <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
-   WebClient client = WebClient.create(vertx);
+  <span class="directive">public</span> <span class="directive">static</span> <span class="type">void</span> main(<span class="predefined-type">String</span><span class="type">[]</span> args) {
+    WebClient client = WebClient.create(vertx);
 
-   <span class="keyword">for</span> (<span class="type">int</span> i = <span class="integer">0</span>;i &lt; <span class="integer">4</span>;i++) {
-     client
-       .get(<span class="integer">8080</span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">myserver.mycompany.com</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">/some-uri</span><span class="delimiter">&quot;</span></span>)
-       .send()
-       .onSuccess(ar -&gt; {
-        <span class="comment">// All callbacks are on the same context</span>
-       });
-   }
- }
+    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="integer">0</span>;i &lt; <span class="integer">4</span>;i++) {
+      client
+        .get(<span class="integer">8080</span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">myserver.mycompany.com</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">/some-uri</span><span class="delimiter">&quot;</span></span>)
+        .send()
+        .onSuccess(ar -&gt; {
+         <span class="comment">// All callbacks are on the same context</span>
+        });
+    }
+  }
 }</code></pre>
 </div>
 </div>
@@ -642,17 +642,17 @@ returns this context on subsequent calls.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="directive">public</span> <span class="type">class</span> <span class="class">MyVerticle</span> <span class="directive">extends</span> AbstractVerticle {
- <span class="directive">public</span> <span class="type">void</span> start() {
-   <span class="predefined-type">Future</span>&lt;HttpServer&gt; future = vertx.createHttpServer()
-     .requestHandler(request -&gt; {
-       <span class="comment">// Executed in the verticle context</span>
-     })
-     .listen(<span class="integer">8080</span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">localhost</span><span class="delimiter">&quot;</span></span>);
+  <span class="directive">public</span> <span class="type">void</span> start() {
+    <span class="predefined-type">Future</span>&lt;HttpServer&gt; future = vertx.createHttpServer()
+      .requestHandler(request -&gt; {
+        <span class="comment">// Executed in the verticle context</span>
+      })
+      .listen(<span class="integer">8080</span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">localhost</span><span class="delimiter">&quot;</span></span>);
 
-   future.onComplete(ar -&gt; {
-      <span class="comment">// Executed in the verticle context</span>
-   });
- }
+    future.onComplete(ar -&gt; {
+       <span class="comment">// Executed in the verticle context</span>
+    });
+  }
 }</code></pre>
 </div>
 </div>
@@ -694,13 +694,13 @@ one if needed and thus never returns null.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="directive">public</span> <span class="type">void</span> integrateWithExternalSystem(<span class="predefined-type">Handler</span>&lt;<span class="predefined-type">Event</span>&gt; handler) {
- <span class="comment">// Capture the current context</span>
- <span class="predefined-type">Context</span> context = vertx.getOrCreateContext();
+  <span class="comment">// Capture the current context</span>
+  <span class="predefined-type">Context</span> context = vertx.getOrCreateContext();
 
- <span class="comment">// Run the event handler on the application context</span>
- externalSystem.onEvent(event -&gt; {
-   context.runOnContext(v -&gt; handler.handle(event));
- });
+  <span class="comment">// Run the event handler on the application context</span>
+  externalSystem.onEvent(event -&gt; {
+    context.runOnContext(v -&gt; handler.handle(event));
+  });
 }</code></pre>
 </div>
 </div>
@@ -761,11 +761,11 @@ sequentially - one after the other - but different actions may be executed on di
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java">context.exceptionHandler(throwable -&gt; {
- <span class="comment">// Any exception thrown by this context</span>
+  <span class="comment">// Any exception thrown by this context</span>
 });
 
 vertx.exceptionHandler(throwable -&gt; {
- <span class="comment">// Any exception uncaught exception thrown on context</span>
+  <span class="comment">// Any exception uncaught exception thrown on context</span>
 });</code></pre>
 </div>
 </div>
@@ -813,7 +813,7 @@ with application code.</p>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java">assertNull(Vertx.currentContext());
 context.dispatch(event, evt -&gt; {
- assertSame(context, Vertx.currentContext());
+  assertSame(context, Vertx.currentContext());
 });</code></pre>
 </div>
 </div>
@@ -826,10 +826,10 @@ context.dispatch(event, evt -&gt; {
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java">context.exceptionHandler(err -&gt; {
- <span class="comment">// Should receive the exception thrown below</span>
+  <span class="comment">// Should receive the exception thrown below</span>
 });
 context.dispatch(event, evt -&gt; {
- <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">RuntimeException</span>();
+  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="exception">RuntimeException</span>();
 });</code></pre>
 </div>
 </div>
@@ -861,7 +861,7 @@ no context associated is done
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">default</span> <span class="type">void</span> emit(E event, <span class="predefined-type">Handler</span>&lt;E&gt; eventHandler) {
- execute(v -&gt; dispatch(argument, task));
+  execute(v -&gt; dispatch(argument, task));
 }</code></pre>
 </div>
 </div>
@@ -945,13 +945,13 @@ is <em>duplicated</em> for each HTTP request, to grant unicity to each HTTP requ
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="directive">public</span> <span class="type">class</span> <span class="class">MyVerticle</span> <span class="directive">extends</span> AbstractVerticle {
- <span class="directive">public</span> <span class="type">void</span> start() {
-   vertx.createHttpServer()
-     .requestHandler(request -&gt; {
-       <span class="comment">// Executed in a duplicate verticle context</span>
-     })
-     .listen(<span class="integer">8080</span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">localhost</span><span class="delimiter">&quot;</span></span>);
- }
+  <span class="directive">public</span> <span class="type">void</span> start() {
+    vertx.createHttpServer()
+      .requestHandler(request -&gt; {
+        <span class="comment">// Executed in a duplicate verticle context</span>
+      })
+      .listen(<span class="integer">8080</span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">localhost</span><span class="delimiter">&quot;</span></span>);
+  }
 }</code></pre>
 </div>
 </div>
@@ -961,13 +961,13 @@ is <em>duplicated</em> for each HTTP request, to grant unicity to each HTTP requ
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java">vertx.createHttpServer()
- .requestHandler(request -&gt; {
-   JsonObject specificRequestData = getRequestData(request);
-   <span class="predefined-type">Context</span> context = vertx.getOrCreateContext();
-   context.putLocal(<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stuff</span><span class="delimiter">&quot;</span></span>, specificRequestData);
-   processRequest(request);
- })
- .listen(<span class="integer">8080</span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">localhost</span><span class="delimiter">&quot;</span></span>);</code></pre>
+  .requestHandler(request -&gt; {
+    JsonObject specificRequestData = getRequestData(request);
+    <span class="predefined-type">Context</span> context = vertx.getOrCreateContext();
+    context.putLocal(<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stuff</span><span class="delimiter">&quot;</span></span>, specificRequestData);
+    processRequest(request);
+  })
+  .listen(<span class="integer">8080</span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">localhost</span><span class="delimiter">&quot;</span></span>);</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -986,8 +986,8 @@ a trace</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="directive">public</span> <span class="type">void</span> startProcessing(Request request) {
- <span class="predefined-type">Context</span> duplicate = context.duplicate();
- request.setContext(duplicate);
+  <span class="predefined-type">Context</span> duplicate = context.duplicate();
+  request.setContext(duplicate);
 }</code></pre>
 </div>
 </div>
@@ -1007,8 +1007,8 @@ its <code>close(Promise&lt;Void&gt; closePromise)</code> method:</p>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="annotation">@Override</span>
 <span class="directive">public</span> <span class="type">void</span> close(Promise&lt;<span class="predefined-type">Void</span>&gt; completion) {
- <span class="comment">// Do cleanup, the method will complete the future</span>
-  doClose(completion);
+  <span class="comment">// Do cleanup, the method will complete the future</span>
+   doClose(completion);
 }</code></pre>
 </div>
 </div>
@@ -1049,7 +1049,7 @@ its <code>close(Promise&lt;Void&gt; closePromise)</code> method:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-10-25 05:05:42 UTC
+Last updated 2024-10-26 05:05:00 UTC
 </div>
 </div>
 </body>

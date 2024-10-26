@@ -538,8 +538,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div class="sectionbody">
 <div class="paragraph">
 <p>Close hooks is an internal feature of Vert.x useful for creating components that are notified when a <code>Verticle</code>
-or a <code>Vertx</code> instance is closed. It can be used for implementing <em>automatic clean-up in verticles</em>
-feature, like for a Vert.x HTTP server.</p>
+ or a <code>Vertx</code> instance is closed. It can be used for implementing <em>automatic clean-up in verticles</em>
+ feature, like for a Vert.x HTTP server.</p>
 </div>
 <div class="paragraph">
 <p>The contract for receving a close notification is defined by the <code>io.vertx.core.Closeable</code> interface and
@@ -549,8 +549,8 @@ its <code>close(Promise&lt;Void&gt; closePromise)</code> method:</p>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="annotation">@Override</span>
 <span class="directive">public</span> <span class="type">void</span> close(Promise&lt;<span class="predefined-type">Void</span>&gt; completion) {
- <span class="comment">// Do cleanup, the method will complete the future</span>
-  doClose(completion);
+  <span class="comment">// Do cleanup, the method will complete the future</span>
+   doClose(completion);
 }</code></pre>
 </div>
 </div>
@@ -588,7 +588,7 @@ the close hook is called.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-10-25 05:05:42 UTC
+Last updated 2024-10-26 05:05:00 UTC
 </div>
 </div>
 </body>
