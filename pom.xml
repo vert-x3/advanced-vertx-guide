@@ -7,7 +7,7 @@
   <parent>
     <groupId>io.vertx</groupId>
     <artifactId>vertx5-parent</artifactId>
-    <version>4</version>
+    <version>12</version>
   </parent>
 
   <artifactId>advanced-vertx-guide</artifactId>
